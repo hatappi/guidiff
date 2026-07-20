@@ -3,12 +3,15 @@ import type { ReviewComment, ReviewPayload } from '@guidiff/schema';
 import * as api from './api.ts';
 import FileDiffView from './components/FileDiffView.tsx';
 import GuidePane from './components/GuidePane.tsx';
+import SubmitModal from './components/SubmitModal.tsx';
 
 export default function App() {
   const [payload, setPayload] = useState<ReviewPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'unified' | 'split'>('unified');
   const [activeFile, setActiveFile] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [finished, setFinished] = useState<'submit' | 'cancel' | null>(null);
 
   useEffect(() => {
     api.fetchReview().then(setPayload).catch((e) => setError(String(e)));
@@ -34,6 +37,16 @@ export default function App() {
     return () => observer.disconnect();
   }, [payload]);
 
+  if (finished === 'submit') {
+    return (
+      <div className="done">
+        ✅ Review submitted — the result has been returned to your session. You can close this tab.
+      </div>
+    );
+  }
+  if (finished === 'cancel') {
+    return <div className="done">Review cancelled. You can close this tab.</div>;
+  }
   if (error) return <div className="error">Failed to load review: {error}</div>;
   if (!payload) return <div className="loading">Loading…</div>;
 
@@ -92,6 +105,8 @@ export default function App() {
         <button className="view-toggle" onClick={() => setViewMode(viewMode === 'unified' ? 'split' : 'unified')}>
           {viewMode === 'unified' ? 'Split view' : 'Unified view'}
         </button>
+        <button className="primary" onClick={() => setModalOpen(true)}>Submit</button>
+        <button onClick={() => { api.cancelReview().finally(() => setFinished('cancel')); }}>Cancel</button>
       </header>
       <div className="layout">
         {payload.guide ? (
@@ -130,6 +145,15 @@ export default function App() {
           ))}
         </main>
       </div>
+      {modalOpen && payload && (
+        <SubmitModal
+          comments={payload.comments}
+          onClose={() => setModalOpen(false)}
+          onSubmit={(verdict, overall) => {
+            api.submitReview(verdict, overall).then(() => setFinished('submit')).catch((e) => setError(String(e)));
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -70,3 +70,13 @@ button.primary:disabled { opacity: 0.5; }
 .anchor-link { background: none; border: none; color: var(--accent); font-size: 12px; font-family: monospace; cursor: pointer; padding: 2px 0; text-align: left; }
 .anchor-link:hover { text-decoration: underline; }
 .file-list { list-style: none; padding: 0; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal { background: var(--bg); border-radius: 8px; padding: 20px; width: 480px; max-height: 80vh; overflow-y: auto; }
+.modal h2 { margin-top: 0; font-size: 16px; }
+.verdict-options { display: flex; gap: 16px; margin: 12px 0; font-size: 14px; }
+.modal textarea { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 6px; }
+.modal-comments { margin: 12px 0; font-size: 13px; }
+.modal-comments ul { padding-left: 16px; }
+.comment-loc { font-family: monospace; color: var(--fg-muted); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.done { padding: 64px; text-align: center; font-size: 16px; }
