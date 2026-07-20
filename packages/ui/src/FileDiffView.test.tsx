@@ -1,5 +1,5 @@
 import { expect, test, mock } from 'bun:test';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, within } from '@testing-library/react';
 import FileDiffView from './components/FileDiffView.tsx';
 
 const file = {
@@ -27,8 +27,9 @@ test('shows changed badge and viewed checkbox toggles', () => {
       onDeleteComment={noop}
     />,
   );
-  expect(container.textContent).toContain('Changed since last view');
-  const checkbox = container.querySelector('input[aria-label="Viewed"]') as HTMLInputElement;
+  const scope = within(container as HTMLElement);
+  expect(scope.getByText('Changed since last view')).toBeTruthy();
+  const checkbox = scope.getByLabelText('Viewed') as HTMLInputElement;
   fireEvent.click(checkbox);
   expect(onToggleViewed).toHaveBeenCalledWith('src/a.ts', true);
 });
@@ -38,6 +39,7 @@ test('split mode renders old and new side by side', () => {
     <FileDiffView file={file} comments={[]} viewMode="split"
       onToggleViewed={noop} onAddComment={noop} onUpdateComment={noop} onDeleteComment={noop} />,
   );
-  expect(container.textContent).toContain('const a = 1;');
-  expect(container.textContent).toContain('const a = 2;');
+  const scope = within(container as HTMLElement);
+  expect(scope.getByText('const a = 1;')).toBeTruthy();
+  expect(scope.getByText('const a = 2;')).toBeTruthy();
 });
