@@ -81,6 +81,10 @@ Guide-writing principles:
   churn (lockfiles, snapshots) last as `low-signal`.
 - Descriptions explain intent and impact, not what the code literally says.
 - Anchor every section to the exact files/lines that prove it.
+- Build sections by GROUPING the changed files: every changed file belongs to
+  exactly ONE section. Never anchor the same file from two sections — when a
+  file is relevant to several concepts, put it in the section where it matters
+  most and mention the relationship in the other section's description instead.
 
 ### 4. Launch guidiff in the background
 
