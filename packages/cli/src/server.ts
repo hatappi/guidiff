@@ -103,11 +103,12 @@ export function startServer(opts: ServerOptions) {
             const { path, viewed } = await parseBody(req, ViewedSchema);
             const file = opts.files.find((f) => f.path === path);
             if (!file) return json({ error: 'unknown file' }, 404);
-            state = setViewed(state, file, viewed, new Date());
+            const now = new Date();
+            state = setViewed(state, file, viewed, now);
             opts.fileStates.set(path, {
               viewed,
               changedSinceLastView: false,
-              lastViewedAt: viewed ? new Date().toISOString() : undefined,
+              lastViewedAt: viewed ? now.toISOString() : undefined,
             });
             await saveState(opts.gitDir, state);
             return json({ ok: true });
