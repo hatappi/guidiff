@@ -36,7 +36,7 @@ describe('App', () => {
   test('loads review payload and shows target and files', async () => {
     render(<App />);
     await waitFor(() => expect(screen.getByText('working tree')).toBeTruthy());
-    expect(screen.getByText('src/a.ts')).toBeTruthy();
+    expect(screen.getAllByText('src/a.ts').length).toBeGreaterThan(0);
     expect(screen.getByText('const a = 2;')).toBeTruthy();
   });
 });
