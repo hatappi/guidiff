@@ -17,12 +17,16 @@ export default function App() {
   useEffect(() => {
     if (!payload) return;
     if (typeof IntersectionObserver === 'undefined') return;
+    const intersecting = new Set<string>();
     const observer = new IntersectionObserver(
       (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting);
-        if (visible.length > 0) {
-          setActiveFile(visible[0]!.target.id.replace(/^file-/, ''));
+        for (const e of entries) {
+          const id = e.target.id.replace(/^file-/, '');
+          if (e.isIntersecting) intersecting.add(id);
+          else intersecting.delete(id);
         }
+        const first = payload.files.find((f) => intersecting.has(f.path));
+        if (first) setActiveFile(first.path);
       },
       { rootMargin: '0px 0px -70% 0px' },
     );
@@ -42,7 +46,7 @@ export default function App() {
     setPayload((p) => p && {
       ...p,
       reviewedSections: reviewed
-        ? [...p.reviewedSections, id]
+        ? (p.reviewedSections.includes(id) ? p.reviewedSections : [...p.reviewedSections, id])
         : p.reviewedSections.filter((s) => s !== id),
     });
   };
