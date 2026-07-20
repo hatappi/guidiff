@@ -1,0 +1,13 @@
+{
+  "name": "guidiff-monorepo",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "test": "bun test packages/schema packages/cli && bun test --cwd packages/ui",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0",
+    "@types/bun": "^1.2.16"
+  }
+}
