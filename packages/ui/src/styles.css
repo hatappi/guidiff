@@ -125,6 +125,14 @@ button.primary:disabled { opacity: 0.5; }
 .section-done { font-size: 11px; color: var(--success); }
 .anchors { list-style: none; padding: 0; margin: 4px 0 0; }
 .anchor-link { background: none; border: none; color: var(--accent); font-size: 12px; font-family: monospace; cursor: pointer; padding: 2px 0; text-align: left; }
+.guide-pane--sections { padding: 0; display: flex; flex-direction: column; }
+.guide-pane-header { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.guide-pane-header h2 { font-size: 15px; margin: 0 0 4px; }
+.guide-snap-container { flex: 1; overflow-y: auto; scroll-snap-type: y mandatory; }
+.guide-card { min-height: 100%; scroll-snap-align: start; scroll-snap-stop: always; padding: 16px; border-bottom: 1px solid var(--border); }
+.guide-card-meta { font-size: 11px; color: var(--fg-muted); margin-bottom: 8px; }
+.section-group-header { position: sticky; top: 49px; z-index: 5; display: flex; align-items: center; gap: 8px; margin: 16px 16px 0; padding: 8px 12px; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 6px; }
+.section-group-header h2 { font-size: 14px; margin: 0; flex: 1; }
 .anchor-link:hover { text-decoration: underline; }
 .file-list { list-style: none; padding: 0; }
 .modal-backdrop { position: fixed; inset: 0; background: var(--backdrop); display: flex; align-items: center; justify-content: center; z-index: 100; }
