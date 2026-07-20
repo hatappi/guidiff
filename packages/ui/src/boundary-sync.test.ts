@@ -31,4 +31,17 @@ describe('continuousSectionIndex', () => {
   test('zero viewport height yields 0', () => {
     expect(continuousSectionIndex([100, 200], 0)).toBe(0);
   });
+
+  test('topOffset shrinks the visible content band (accounts for the sticky header)', () => {
+    // bottom at viewport bottom: not started
+    expect(continuousSectionIndex([1000, 3000], H, 49)).toBe(0);
+    // bottom at the offset top: fully crossed
+    expect(continuousSectionIndex([49, 3000], H, 49)).toBe(1);
+    // bottom halfway through the shrunk band
+    expect(continuousSectionIndex([524.5, 3000], H, 49)).toBeCloseTo(0.5, 5);
+  });
+
+  test('degenerate band (viewportHeight === topOffset) yields 0', () => {
+    expect(continuousSectionIndex([100, 200], 49, 49)).toBe(0);
+  });
 });

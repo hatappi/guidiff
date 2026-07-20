@@ -114,9 +114,6 @@ button.primary:disabled { opacity: 0.5; }
 .guide-pane { position: sticky; top: 49px; height: calc(100vh - 49px); overflow-y: auto; padding: 16px; background: var(--bg); border-right: 1px solid var(--border); }
 .guide-pane h2 { font-size: 15px; margin: 0 0 8px; }
 .guide-summary { font-size: 13px; color: var(--fg-muted); }
-.guide-sections { list-style: none; padding: 0; margin: 0; counter-reset: section; }
-.guide-section { border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 8px; }
-.guide-section.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .guide-section-header { display: flex; align-items: center; gap: 6px; }
 .guide-section-header h3 { font-size: 13px; margin: 0; flex: 1; }
 .importance-badge { font-size: 10px; padding: 1px 6px; border-radius: 10px; border: 1px solid var(--border); color: var(--fg-muted); }

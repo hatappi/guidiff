@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReviewComment, ReviewPayload } from '@guidiff/schema';
 import * as api from './api.ts';
-import { continuousSectionIndex } from './boundary-sync.ts';
+import { continuousSectionIndex, HEADER_OFFSET } from './boundary-sync.ts';
 import FileDiffView from './components/FileDiffView.tsx';
 import GuidePane from './components/GuidePane.tsx';
 import SubmitModal from './components/SubmitModal.tsx';
@@ -20,7 +20,6 @@ export default function App() {
     api.fetchReview().then(setPayload).catch((e) => setError(String(e)));
   }, []);
 
-  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const syncSource = useRef<'left' | null>(null);
   const syncTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastSectionRef = useRef<string | null>(null);
@@ -37,11 +36,9 @@ export default function App() {
   // files changed).
   useEffect(() => {
     if (!groups || groups.length === 0) return;
-    if (activeSectionId && groups.some((g) => g.section.id === activeSectionId)) return;
-    const fallback = groups[0]!.section.id;
-    lastSectionRef.current = fallback;
-    setActiveSectionId(fallback);
-  }, [groups, activeSectionId]);
+    if (lastSectionRef.current && groups.some((g) => g.section.id === lastSectionRef.current)) return;
+    lastSectionRef.current = groups[0]!.section.id;
+  }, [groups]);
 
   /**
    * Left-driven only: called when a real user scroll settles the left pane
@@ -52,10 +49,13 @@ export default function App() {
     if (lastSectionRef.current === id) return false;
     lastSectionRef.current = id;
     syncSource.current = 'left';
-    document.getElementById(`section-${id}`)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    const el = document.getElementById(`section-${id}`);
+    if (el && typeof window.scrollTo === 'function') {
+      const rect = el.getBoundingClientRect();
+      window.scrollTo({ top: (window.scrollY ?? 0) + rect.top - HEADER_OFFSET, behavior: 'smooth' });
+    }
     clearTimeout(syncTimer.current);
     syncTimer.current = setTimeout(() => { syncSource.current = null; }, 600);
-    setActiveSectionId(id);
     return true;
   };
 
@@ -102,7 +102,7 @@ export default function App() {
       const els = groups.map((g) => document.getElementById(`section-${g.section.id}`));
       if (els.some((el) => !el)) return;
       const bottoms = els.map((el) => el!.getBoundingClientRect().bottom);
-      const ci = continuousSectionIndex(bottoms, H);
+      const ci = continuousSectionIndex(bottoms, H, HEADER_OFFSET);
       const active = Math.min(Math.floor(ci), groups.length - 1);
 
       const track = trackRef.current;
@@ -114,7 +114,6 @@ export default function App() {
       const id = groups[active]!.section.id;
       if (lastSectionRef.current !== id) {
         lastSectionRef.current = id;
-        setActiveSectionId(id);
       }
     };
     window.addEventListener('scroll', onScroll, { passive: true });
