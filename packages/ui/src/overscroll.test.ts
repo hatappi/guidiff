@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createOverscrollTracker } from './overscroll.ts';
+import { classifyEdge, createOverscrollTracker } from './overscroll.ts';
 
 describe('createOverscrollTracker', () => {
   test('fires "next" once accumulated bottom-edge deltas exceed the threshold', () => {
@@ -52,5 +52,19 @@ describe('createOverscrollTracker', () => {
     expect(tracker.feed('bottom', 100, 0)).toBeNull();
     tracker.reset();
     expect(tracker.feed('bottom', 100, 10)).toBeNull();
+  });
+});
+
+describe('classifyEdge', () => {
+  test('long content: bottom only at the end, top only at the start', () => {
+    expect(classifyEdge(0, 800, 2000, 100)).toBe('top');
+    expect(classifyEdge(0, 800, 2000, -100)).toBe('top');
+    expect(classifyEdge(1200, 800, 2000, 100)).toBe('bottom');
+    expect(classifyEdge(600, 800, 2000, 100)).toBeNull();
+  });
+  test('short content (fits viewport): wheel direction decides the edge', () => {
+    expect(classifyEdge(0, 800, 500, 100)).toBe('bottom');  // scrolling down -> next
+    expect(classifyEdge(0, 800, 500, -100)).toBe('top');    // scrolling up -> prev
+    expect(classifyEdge(0, 800, 500, 0)).toBeNull();
   });
 });

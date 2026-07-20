@@ -4,7 +4,7 @@ import * as api from './api.ts';
 import FileDiffView from './components/FileDiffView.tsx';
 import GuidePane from './components/GuidePane.tsx';
 import SubmitModal from './components/SubmitModal.tsx';
-import { createOverscrollTracker } from './overscroll.ts';
+import { classifyEdge, createOverscrollTracker } from './overscroll.ts';
 import { buildSectionGroups } from './sections.ts';
 import { useTheme } from './theme-context.tsx';
 
@@ -87,9 +87,7 @@ export default function App() {
       const scrollHeight =
         typeof document.body?.scrollHeight === 'number' ? document.body.scrollHeight : 0;
 
-      let edge: 'top' | 'bottom' | null = null;
-      if (scrollY + innerHeight >= scrollHeight - 2) edge = 'bottom';
-      else if (scrollY <= 2) edge = 'top';
+      const edge = classifyEdge(scrollY, innerHeight, scrollHeight, e.deltaY);
 
       const result = overscrollTracker.current.feed(edge, e.deltaY, Date.now());
       if (!result) return;

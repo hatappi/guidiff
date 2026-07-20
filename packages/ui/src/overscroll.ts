@@ -14,6 +14,25 @@ export interface OverscrollTracker {
 
 const IDLE_GAP_MS = 300;
 
+/**
+ * Classifies which scroll edge a wheel event should count toward.
+ * When the content fits in one viewport both edges are true at once;
+ * in that case the wheel's direction decides which edge applies.
+ */
+export function classifyEdge(
+  scrollY: number,
+  innerHeight: number,
+  scrollHeight: number,
+  deltaY: number,
+): 'top' | 'bottom' | null {
+  const atBottom = scrollY + innerHeight >= scrollHeight - 2;
+  const atTop = scrollY <= 2;
+  if (atBottom && atTop) return deltaY > 0 ? 'bottom' : deltaY < 0 ? 'top' : null;
+  if (atBottom) return 'bottom';
+  if (atTop) return 'top';
+  return null;
+}
+
 /** Cumulative overscroll tracker used to trigger edge-scroll section paging. */
 export function createOverscrollTracker(threshold: number): OverscrollTracker {
   let accumulated = 0;
