@@ -1,0 +1,13 @@
+{
+  "name": "guidiff",
+  "owner": {
+    "name": "hatappi"
+  },
+  "plugins": [
+    {
+      "name": "guidiff",
+      "source": ".",
+      "description": "Guided local code review: GitHub-like diff UI with a reading guide, launched from and reporting back to your Claude session"
+    }
+  ]
+}

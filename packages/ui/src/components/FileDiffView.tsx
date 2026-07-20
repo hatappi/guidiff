@@ -146,10 +146,8 @@ export default function FileDiffView(props: FileDiffViewProps) {
             ) : (
               <table className="hunk hunk-split"><tbody>
                 {buildSplitRows(hunk).map((row, j) => {
-                  const leftKey: LineKey | null = row.left?.oldLine !== undefined
-                    ? { side: 'old', line: row.left.oldLine } : null;
-                  const rightKey: LineKey | null = row.right?.newLine !== undefined
-                    ? { side: 'new', line: row.right.newLine } : null;
+                  const leftKey: LineKey | null = row.left ? lineKey(row.left) : null;
+                  const rightKey: LineKey | null = row.right ? lineKey(row.right) : null;
                   const rowComments = props.comments.filter(
                     (c) => (leftKey && c.side === leftKey.side && c.endLine === leftKey.line)
                       || (rightKey && c.side === rightKey.side && c.endLine === rightKey.line),
