@@ -1,4 +1,4 @@
-import type { DiffLine, FileDiff, Hunk } from '@guidiff/schema';
+import type { FileDiff, Hunk } from '@guidiff/schema';
 
 export type DiffSpec = { kind: 'worktree' } | { kind: 'range'; args: string[]; label: string };
 
@@ -74,4 +74,45 @@ export function parseUnifiedDiff(text: string): FileDiff[] {
     files.push({ path, oldPath, status, binary, hunks, patch: chunk.replace(/\n$/, '') });
   }
   return files;
+}
+
+async function git(repoRoot: string, args: string[], allowExit1 = false): Promise<string> {
+  const proc = Bun.spawn(['git', '-C', repoRoot, ...args], { stdout: 'pipe', stderr: 'pipe' });
+  const [out, err] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ]);
+  const code = await proc.exited;
+  if (code !== 0 && !(allowExit1 && code === 1)) {
+    throw new Error(`git ${args.join(' ')} failed (exit ${code}): ${err.trim()}`);
+  }
+  return out;
+}
+
+export async function getRepoRoot(cwd: string): Promise<string> {
+  return (await git(cwd, ['rev-parse', '--show-toplevel'])).trim();
+}
+
+export async function getGitDir(cwd: string): Promise<string> {
+  return (await git(cwd, ['rev-parse', '--absolute-git-dir'])).trim();
+}
+
+const DIFF_BASE_ARGS = ['diff', '--no-color', '--unified=3', '--find-renames'];
+
+export async function collectDiff(repoRoot: string, spec: DiffSpec): Promise<FileDiff[]> {
+  if (spec.kind === 'range') {
+    return parseUnifiedDiff(await git(repoRoot, [...DIFF_BASE_ARGS, ...spec.args]));
+  }
+  // worktree: staged + unstaged vs HEAD, plus untracked files
+  const tracked = parseUnifiedDiff(await git(repoRoot, [...DIFF_BASE_ARGS, 'HEAD']));
+  const untrackedList = (await git(repoRoot, ['ls-files', '--others', '--exclude-standard']))
+    .split('\n')
+    .filter((p) => p !== '');
+  const untracked: FileDiff[] = [];
+  for (const path of untrackedList) {
+    // git diff --no-index exits 1 when files differ; that's expected.
+    const patch = await git(repoRoot, [...DIFF_BASE_ARGS, '--no-index', '--', '/dev/null', path], true);
+    untracked.push(...parseUnifiedDiff(patch));
+  }
+  return [...tracked, ...untracked];
 }
