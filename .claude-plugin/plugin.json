@@ -1,6 +1,6 @@
 {
   "name": "guidiff",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Guided local code review: GitHub-like diff UI with a reading guide, launched from and reporting back to your Claude session",
   "author": { "name": "hatappi" },
   "keywords": ["code-review", "diff", "git", "guide"]

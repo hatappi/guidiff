@@ -61,7 +61,7 @@ describe('App', () => {
     expect(screen.getByText('const a = 2;')).toBeTruthy();
   });
 
-  test('with a guide, the right pane renders only the active section', async () => {
+  test('with a guide, the right pane renders all sections continuously', async () => {
     payloadToServe = guidedPayload;
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector('#section-core')).toBeTruthy());
@@ -70,25 +70,30 @@ describe('App', () => {
     expect(within(core).getByText('Core stuff')).toBeTruthy();
     expect(within(core).getAllByText('src/a.ts').length).toBeGreaterThan(0);
 
-    // The inactive "Other changes" group is not rendered on the right...
-    expect(container.querySelector('#section-other-changes')).toBeNull();
-    // ...even though the left pane always renders a card for every section.
+    // Both groups are rendered on the right (continuous rendering)...
+    const other = container.querySelector('#section-other-changes') as HTMLElement;
+    expect(other).toBeTruthy();
+    expect(within(other).getAllByText('src/extra.ts').length).toBeGreaterThan(0);
+    // ...and the left pane also renders a card for every section.
     expect(container.querySelector('#guide-card-core')).toBeTruthy();
     const otherCard = container.querySelector('#guide-card-other-changes') as HTMLElement;
     expect(otherCard).toBeTruthy();
   });
 
-  test('clicking an anchor for a file outside the active section switches the right pane to it', async () => {
+  test('clicking an anchor jumps to the file element without switching groups', async () => {
     payloadToServe = guidedPayload;
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector('#section-core')).toBeTruthy());
 
     const otherCard = container.querySelector('#guide-card-other-changes') as HTMLElement;
+    const target = document.getElementById('file-src/extra.ts') as HTMLElement | null;
+    const scrollIntoView = mock(() => {});
+    if (target) target.scrollIntoView = scrollIntoView;
     fireEvent.click(within(otherCard).getByText('src/extra.ts'));
 
-    await waitFor(() => expect(container.querySelector('#section-other-changes')).toBeTruthy());
-    expect(container.querySelector('#section-core')).toBeNull();
-    const other = container.querySelector('#section-other-changes') as HTMLElement;
-    expect(within(other).getAllByText('src/extra.ts').length).toBeGreaterThan(0);
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    // Both sections remain rendered (continuous rendering, no group switch).
+    expect(container.querySelector('#section-core')).toBeTruthy();
+    expect(container.querySelector('#section-other-changes')).toBeTruthy();
   });
 });

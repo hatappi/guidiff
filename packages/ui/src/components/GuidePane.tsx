@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
+import type { RefObject } from 'react';
 import type { GuideSection } from '@guidiff/schema';
-import { nearestCardId } from '../scroll-sync.ts';
 import type { SectionGroup } from '../sections.ts';
 
 export interface GuidePaneProps {
@@ -11,42 +11,50 @@ export interface GuidePaneProps {
   fileViewed: Record<string, boolean>;
   onToggleSection: (id: string, reviewed: boolean) => void;
   onJump: (file: string, line?: number) => void;
-  /** Fired when a user scroll settles on a card (snap position reached). */
-  onSettle: (sectionId: string) => void;
+  /** Ref to the card track, written directly by App's transform-based scroll sync. */
+  trackRef: RefObject<HTMLDivElement | null>;
+  /** Fired (throttled) when a wheel gesture at a card's edge should move to the adjacent section. */
+  onStep: (direction: 'next' | 'prev') => void;
 }
 
 const IMPORTANCE_LABEL = { core: 'Core', supporting: 'Supporting', 'low-signal': 'Low signal' } as const;
 
-export default function GuidePane(props: GuidePaneProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const settleRef = useRef(props.onSettle);
-  settleRef.current = props.onSettle;
+/** Minimum time between onStep calls, so one wheel gesture doesn't fire multiple steps. */
+const STEP_COOLDOWN_MS = 400;
 
+export default function GuidePane(props: GuidePaneProps) {
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const stepRef = useRef(props.onStep);
+  stepRef.current = props.onStep;
+  const lastStepAt = useRef(0);
+
+  // Manual (non-passive) wheel listener: React's onWheel prop can't reliably
+  // preventDefault a wheel gesture, and we need to stop the page from
+  // scrolling when a step should happen instead.
   useEffect(() => {
-    const el = containerRef.current;
+    const el = viewportRef.current;
     if (!el) return;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const settle = () => {
-      const cards = Array.from(el.querySelectorAll<HTMLElement>('.guide-card')).map((c) => ({
-        id: c.id.replace(/^guide-card-/, ''),
-        offsetTop: c.offsetTop,
-      }));
-      const id = nearestCardId(el.scrollTop, cards);
-      if (id) settleRef.current(id);
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY === 0) return;
+      const direction: 'next' | 'prev' = e.deltaY > 0 ? 'next' : 'prev';
+      const card = (e.target as HTMLElement | null)?.closest?.('.guide-card') as HTMLElement | null;
+      if (card) {
+        const canScrollFurther = direction === 'next'
+          ? card.scrollTop + card.clientHeight < card.scrollHeight - 1
+          : card.scrollTop > 0;
+        // The card still has room to scroll in this direction: let the
+        // native inner scroll handle it instead of stepping sections.
+        if (canScrollFurther) return;
+      }
+      e.preventDefault();
+      const now = Date.now();
+      if (now - lastStepAt.current < STEP_COOLDOWN_MS) return;
+      lastStepAt.current = now;
+      stepRef.current(direction);
     };
-    // 'scrollend' where supported; a quiet-period timer as fallback.
-    const onScroll = () => {
-      clearTimeout(timer);
-      timer = setTimeout(settle, 150);
-    };
-    el.addEventListener('scrollend', settle);
-    el.addEventListener('scroll', onScroll);
-    return () => {
-      clearTimeout(timer);
-      el.removeEventListener('scrollend', settle);
-      el.removeEventListener('scroll', onScroll);
-    };
-  }, [props.groups]);
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
 
   return (
     <aside className="guide-pane guide-pane--sections">
@@ -54,18 +62,24 @@ export default function GuidePane(props: GuidePaneProps) {
         <h2>{props.title}</h2>
         <p className="guide-summary">{props.summary}</p>
       </div>
-      <div className="guide-snap-container" ref={containerRef}>
-        {props.groups.map((g, i) => (
-          <SectionCardView
-            key={g.section.id}
-            section={g.section}
-            position={`${i + 1} / ${props.groups.length}`}
-            reviewed={props.reviewedSections.includes(g.section.id)}
-            allViewed={g.section.anchors.length > 0 && g.section.anchors.every((a) => props.fileViewed[a.file])}
-            onToggleSection={props.onToggleSection}
-            onJump={props.onJump}
-          />
-        ))}
+      <div className="guide-viewport" ref={viewportRef}>
+        <div className="guide-track" ref={props.trackRef}>
+          {props.groups.map((g, i) => (
+            <SectionCardView
+              key={g.section.id}
+              section={g.section}
+              position={`${i + 1} / ${props.groups.length}`}
+              reviewed={props.reviewedSections.includes(g.section.id)}
+              files={g.files.map((f) => ({
+                path: f.path,
+                line: g.section.anchors.find((a) => a.file === f.path)?.lines?.[0],
+              }))}
+              allViewed={g.files.length > 0 && g.files.every((f) => props.fileViewed[f.path])}
+              onToggleSection={props.onToggleSection}
+              onJump={props.onJump}
+            />
+          ))}
+        </div>
       </div>
     </aside>
   );
@@ -75,6 +89,7 @@ function SectionCardView(props: {
   section: GuideSection;
   position: string;
   reviewed: boolean;
+  files: Array<{ path: string; line?: number }>;
   allViewed: boolean;
   onToggleSection: (id: string, reviewed: boolean) => void;
   onJump: (file: string, line?: number) => void;
@@ -95,10 +110,10 @@ function SectionCardView(props: {
       <p className="guide-section-desc">{section.description}</p>
       {props.allViewed && <span className="section-done">All files viewed</span>}
       <ul className="anchors">
-        {section.anchors.map((a) => (
-          <li key={`${a.file}:${a.lines?.[0] ?? ''}`}>
-            <button className="anchor-link" onClick={() => props.onJump(a.file, a.lines?.[0])}>
-              {a.lines ? `${a.file}:${a.lines[0]}` : a.file}
+        {props.files.map((f) => (
+          <li key={`${f.path}:${f.line ?? ''}`}>
+            <button className="anchor-link" onClick={() => props.onJump(f.path, f.line)}>
+              {f.line != null ? `${f.path}:${f.line}` : f.path}
             </button>
           </li>
         ))}
