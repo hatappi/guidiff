@@ -45,7 +45,14 @@ async function main(): Promise<number> {
       log(`guidiff: guide file not found: ${opts.guidePath}`);
       return 1;
     }
-    const parsed = GuideSchema.safeParse(JSON.parse(await guideFile.text()));
+    let rawGuide: unknown;
+    try {
+      rawGuide = JSON.parse(await guideFile.text());
+    } catch {
+      log(`guidiff: invalid guide JSON: ${opts.guidePath} is not valid JSON`);
+      return 1;
+    }
+    const parsed = GuideSchema.safeParse(rawGuide);
     if (!parsed.success) {
       log(`guidiff: invalid guide JSON:\n${parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n')}`);
       return 1;

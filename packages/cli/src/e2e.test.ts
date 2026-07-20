@@ -88,4 +88,15 @@ describe('guidiff e2e', () => {
     expect(await proc.exited).toBe(1);
     expect(await new Response(proc.stderr).text()).toContain('invalid guide JSON');
   });
+
+  test('malformed guide json (not parseable): exit 1 with validation message', async () => {
+    const repo = makeRepo();
+    writeFileSync(join(repo, 'guide.json'), '{not json');
+    const proc = Bun.spawn(['bun', CLI, '.', '--guide', 'guide.json', '--no-open'], {
+      cwd: repo, stdout: 'pipe', stderr: 'pipe',
+    });
+    expect(await proc.exited).toBe(1);
+    expect(await new Response(proc.stderr).text()).toContain('invalid guide JSON');
+    expect(await new Response(proc.stdout).text()).toBe('');
+  });
 });
