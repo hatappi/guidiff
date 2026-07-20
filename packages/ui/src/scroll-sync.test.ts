@@ -1,14 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { nearestCardId, topmostGroupId } from './scroll-sync.ts';
-
-describe('topmostGroupId', () => {
-  test('returns the first id in document order that is intersecting', () => {
-    expect(topmostGroupId(new Set(['b', 'c']), ['a', 'b', 'c'])).toBe('b');
-  });
-  test('returns null when nothing intersects', () => {
-    expect(topmostGroupId(new Set(), ['a'])).toBeNull();
-  });
-});
+import { nearestCardId } from './scroll-sync.ts';
 
 describe('nearestCardId', () => {
   const cards = [

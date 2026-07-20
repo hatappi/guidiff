@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useState,
+  type ReactNode,
+} from 'react';
 import { loadStoredTheme, resolveTheme, saveStoredTheme, type Theme } from './theme.ts';
 
 const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({
@@ -13,7 +21,7 @@ function osPrefersDark(): boolean {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => resolveTheme(loadStoredTheme(), osPrefersDark()));
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 

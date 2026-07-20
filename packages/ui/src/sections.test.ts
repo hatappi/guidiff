@@ -45,3 +45,33 @@ describe('buildSectionGroups', () => {
     expect(covered.map((g) => g.section.id)).toEqual(['core', 'wiring']);
   });
 });
+
+describe('buildSectionGroups id collisions', () => {
+  test('synthesized id avoids a guide section already named other-changes', () => {
+    const collidingGuide: Guide = {
+      version: 1,
+      title: 'T',
+      summary: 'S',
+      sections: [
+        {
+          id: OTHER_SECTION_ID,
+          title: 'Other changes (author-defined)',
+          description: 'd',
+          importance: 'supporting',
+          anchors: [{ file: 'a.ts', side: 'new' }],
+        },
+      ],
+    };
+    const files = [file('a.ts'), file('c.ts')];
+    const groups = buildSectionGroups(collidingGuide, files);
+
+    const ids = groups.map((g) => g.section.id);
+    expect(new Set(ids).size).toBe(ids.length);
+
+    expect(groups[0]!.section.id).toBe(OTHER_SECTION_ID);
+    expect(groups[0]!.files.map((f) => f.path)).toEqual(['a.ts']);
+
+    expect(groups[1]!.section.id).toBe(`${OTHER_SECTION_ID}-2`);
+    expect(groups[1]!.files.map((f) => f.path)).toEqual(['c.ts']);
+  });
+});

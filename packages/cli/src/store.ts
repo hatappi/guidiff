@@ -27,6 +27,9 @@ export class ReviewStore {
     return [...this.#comments.values()];
   }
 
+  // Section ids are intentionally NOT validated against the guide: the UI
+  // synthesizes sections (e.g. "other-changes") whose ids must round-trip
+  // into the review result unchanged.
   setSectionReviewed(id: string, reviewed: boolean): void {
     if (reviewed) this.#reviewed.add(id);
     else this.#reviewed.delete(id);

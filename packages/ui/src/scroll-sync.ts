@@ -1,8 +1,3 @@
-/** First id in document order currently intersecting the viewport. */
-export function topmostGroupId(intersecting: Set<string>, order: string[]): string | null {
-  return order.find((id) => intersecting.has(id)) ?? null;
-}
-
 /** Card whose top edge is closest to the container's scrollTop. */
 export function nearestCardId(
   scrollTop: number,

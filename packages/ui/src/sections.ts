@@ -32,9 +32,12 @@ export function buildSectionGroups(guide: Guide, files: FileWithState[]): Sectio
 
   const uncovered = files.filter((f) => !assigned.has(f.path));
   if (uncovered.length > 0) {
+    const existingIds = new Set(guide.sections.map((s) => s.id));
+    let otherId = OTHER_SECTION_ID;
+    for (let n = 2; existingIds.has(otherId); n++) otherId = `${OTHER_SECTION_ID}-${n}`;
     groups.push({
       section: {
-        id: OTHER_SECTION_ID,
+        id: otherId,
         title: 'Other changes',
         description: 'Changed files not covered by the guide.',
         importance: 'low-signal',
