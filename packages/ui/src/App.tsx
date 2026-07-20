@@ -26,6 +26,7 @@ export default function App() {
   const lastSectionRef = useRef<string | null>(null);
   const guideScrollRef = useRef<HTMLDivElement | null>(null);
   const lastLeftWriteAt = useRef(0);
+  const syncingDecay = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const groups = useMemo(
     () => (payload?.guide ? buildSectionGroups(payload.guide, payload.files) : null),
@@ -91,9 +92,14 @@ export default function App() {
           : null;
         if (cur) {
           lastLeftWriteAt.current = Date.now();
+          container.classList.add('syncing');
           container.scrollTop = next
             ? cur.offsetTop + frac * (next.offsetTop - cur.offsetTop)
             : cur.offsetTop;
+          clearTimeout(syncingDecay.current);
+          syncingDecay.current = setTimeout(() => {
+            guideScrollRef.current?.classList.remove('syncing');
+          }, 250);
         }
       }
 
@@ -105,7 +111,11 @@ export default function App() {
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
-    return () => window.removeEventListener('scroll', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      clearTimeout(syncingDecay.current);
+      guideScrollRef.current?.classList.remove('syncing');
+    };
   }, [groups]);
 
   if (finished === 'submit') {
