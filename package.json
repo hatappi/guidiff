@@ -1,5 +1,5 @@
 {
-  "name": "guidiff-monorepo",
+  "name": "guidiff",
   "private": true,
   "workspaces": ["packages/*"],
   "scripts": {
