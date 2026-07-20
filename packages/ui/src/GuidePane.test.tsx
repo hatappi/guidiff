@@ -1,60 +1,73 @@
 import { expect, test, mock } from 'bun:test';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, within } from '@testing-library/react';
 import type { Guide } from '@guidiff/schema';
 import GuidePane from './components/GuidePane.tsx';
+import { buildSectionGroups, type FileWithState } from './sections.ts';
+
+const file = (path: string): FileWithState => ({
+  path, status: 'modified', binary: false, hunks: [], patch: 'x',
+  state: { viewed: false, changedSinceLastView: false },
+});
 
 const guide: Guide = {
-  version: 1,
-  title: 'Add auth',
-  summary: 'Adds JWT auth end to end.',
+  version: 1, title: 'Add auth', summary: 'Adds JWT auth.',
   sections: [
-    { id: 'core', title: 'Core middleware', description: 'The heart of the change.', importance: 'core',
+    { id: 'core', title: 'Core middleware', description: 'Heart.', importance: 'core',
       anchors: [{ file: 'src/auth.ts', side: 'new' }] },
-    { id: 'wiring', title: 'Router wiring', description: 'Hook it up.', importance: 'supporting',
-      anchors: [{ file: 'src/app.ts', lines: [12, 45] as [number, number], side: 'new' }] },
-    { id: 'lockfile', title: 'Lockfile churn', description: 'Auto-generated.', importance: 'low-signal',
+    { id: 'lockfile', title: 'Lockfile churn', description: 'Auto.', importance: 'low-signal',
       anchors: [{ file: 'bun.lock', side: 'new' }] },
   ],
 };
+const files = [file('src/auth.ts'), file('bun.lock'), file('extra.ts')];
+const groups = buildSectionGroups(guide, files);
 const noop = () => {};
 
-test('renders summary and sections in order with importance badges', () => {
-  render(<GuidePane guide={guide} reviewedSections={[]} fileViewed={{}} activeFile={null}
-    onToggleSection={noop} onJump={noop} />);
-  expect(screen.getByText('Adds JWT auth end to end.')).toBeTruthy();
-  const titles = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
-  expect(titles).toEqual(['Core middleware', 'Router wiring', 'Lockfile churn']);
+function renderPane(overrides: Partial<Parameters<typeof GuidePane>[0]> = {}) {
+  return render(
+    <GuidePane
+      title={guide.title} summary={guide.summary} groups={groups}
+      reviewedSections={[]} fileViewed={{}}
+      onToggleSection={noop} onJump={noop} onSettle={noop}
+      {...overrides}
+    />,
+  );
+}
+
+test('renders one snap card per group in guide order with position meta', () => {
+  const { container } = renderPane();
+  const cards = Array.from(container.querySelectorAll('.guide-card'));
+  expect(cards.map((c) => c.id)).toEqual([
+    'guide-card-core', 'guide-card-lockfile', 'guide-card-other-changes',
+  ]);
+  expect(within(cards[0] as HTMLElement).getByText('1 / 3')).toBeTruthy();
+  expect(within(cards[2] as HTMLElement).getByText('Other changes')).toBeTruthy();
 });
 
-test('anchor click jumps to file and line', () => {
-  const onJump = mock(noop);
-  render(<GuidePane guide={guide} reviewedSections={[]} fileViewed={{}} activeFile={null}
-    onToggleSection={noop} onJump={onJump} />);
-  fireEvent.click(screen.getByText('src/app.ts:12'));
-  expect(onJump).toHaveBeenCalledWith('src/app.ts', 12);
+test('pane header shows guide title and summary', () => {
+  const { container } = renderPane();
+  const scope = within(container as HTMLElement);
+  expect(scope.getByText('Add auth')).toBeTruthy();
+  expect(scope.getByText('Adds JWT auth.')).toBeTruthy();
 });
 
 test('section checkbox toggles reviewed', () => {
   const onToggleSection = mock(noop);
-  render(<GuidePane guide={guide} reviewedSections={['core']} fileViewed={{}} activeFile={null}
-    onToggleSection={onToggleSection} onJump={noop} />);
-  const boxes = screen.getAllByRole('checkbox') as HTMLInputElement[];
-  expect(boxes[0]!.checked).toBe(true);
-  fireEvent.click(boxes[1]!);
-  expect(onToggleSection).toHaveBeenCalledWith('wiring', true);
+  const { container } = renderPane({ onToggleSection });
+  const first = container.querySelector('#guide-card-core') as HTMLElement;
+  fireEvent.click(within(first).getByRole('checkbox'));
+  expect(onToggleSection).toHaveBeenCalledWith('core', true);
 });
 
-test('section with all anchor files viewed gets done mark', () => {
-  render(<GuidePane guide={guide} reviewedSections={[]} fileViewed={{ 'src/auth.ts': true }} activeFile={null}
-    onToggleSection={noop} onJump={noop} />);
-  expect(screen.getByText('All files viewed')).toBeTruthy();
+test('anchor click jumps to file', () => {
+  const onJump = mock(noop);
+  const { container } = renderPane({ onJump });
+  const first = container.querySelector('#guide-card-core') as HTMLElement;
+  fireEvent.click(within(first).getByText('src/auth.ts'));
+  expect(onJump).toHaveBeenCalledWith('src/auth.ts', undefined);
 });
 
-test('low-signal sections are inside a collapsed details element', () => {
-  render(<GuidePane guide={guide} reviewedSections={[]} fileViewed={{}} activeFile={null}
-    onToggleSection={noop} onJump={noop} />);
-  const details = document.querySelector('details.low-signal-group') as HTMLDetailsElement;
-  expect(details).toBeTruthy();
-  expect(details.open).toBe(false);
-  expect(details.textContent).toContain('Lockfile churn');
+test('all-anchor-files-viewed shows the done mark', () => {
+  const { container } = renderPane({ fileViewed: { 'src/auth.ts': true } });
+  const first = container.querySelector('#guide-card-core') as HTMLElement;
+  expect(within(first).getByText('All files viewed')).toBeTruthy();
 });
