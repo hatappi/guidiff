@@ -4,8 +4,10 @@ import * as api from './api.ts';
 import FileDiffView from './components/FileDiffView.tsx';
 import GuidePane from './components/GuidePane.tsx';
 import SubmitModal from './components/SubmitModal.tsx';
+import { useTheme } from './theme-context.tsx';
 
 export default function App() {
+  const { theme, toggle: toggleTheme } = useTheme();
   const [payload, setPayload] = useState<ReviewPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'unified' | 'split'>('unified');
@@ -102,6 +104,9 @@ export default function App() {
             ? `${payload.reviewedSections.length} / ${payload.guide.sections.length} sections reviewed`
             : `${viewedCount} / ${payload.files.length} files viewed`}
         </span>
+        <button className="theme-toggle" aria-label="Toggle theme" onClick={toggleTheme}>
+          {theme === 'light' ? '🌙' : '☀️'}
+        </button>
         <button className="view-toggle" onClick={() => setViewMode(viewMode === 'unified' ? 'split' : 'unified')}>
           {viewMode === 'unified' ? 'Split view' : 'Unified view'}
         </button>

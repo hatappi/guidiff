@@ -29,6 +29,10 @@ describe('highlightLine (real shiki)', () => {
     expect(html).toContain('<span');
     expect(html).toContain('const');
   });
+  test('dark theme also returns highlighted html', async () => {
+    const html = await highlightLine('const a = 1;', 'src/app.ts', 'dark');
+    expect(html).toContain('<span');
+  });
   test('returns null for empty text and unknown language', async () => {
     expect(await highlightLine('', 'src/app.ts')).toBeNull();
     expect(await highlightLine('x', 'file.unknownext')).toBeNull();
