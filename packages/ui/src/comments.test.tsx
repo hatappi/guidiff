@@ -38,6 +38,27 @@ test('shift-click extends selection to a range', () => {
   });
 });
 
+test('split view: clicking a context line via the left column submits comment with side "new"', () => {
+  const splitFile = {
+    path: 'src/b.ts', status: 'modified' as const, binary: false,
+    hunks: [{ header: '@@ -3,1 +5,1 @@', lines: [
+      { type: 'context' as const, oldLine: 3, newLine: 5, text: 'context line' },
+    ] }],
+    patch: 'x',
+    state: { viewed: false, changedSinceLastView: false },
+  };
+  const onAddComment = mock(noop);
+  render(<FileDiffView file={splitFile} comments={[]} viewMode="split"
+    onToggleViewed={noop} onAddComment={onAddComment} onUpdateComment={noop} onDeleteComment={noop} />);
+  // "3" is the old-side line number, shown only in the left column's line-number cell.
+  fireEvent.click(screen.getByText('3'));
+  fireEvent.change(screen.getByPlaceholderText('Leave a comment'), { target: { value: 'ctx note' } });
+  fireEvent.click(screen.getByText('Add comment'));
+  expect(onAddComment).toHaveBeenCalledWith({
+    file: 'src/b.ts', side: 'new', startLine: 5, endLine: 5, body: 'ctx note',
+  });
+});
+
 test('existing comments render with edit and delete', () => {
   const onDeleteComment = mock(noop);
   render(<FileDiffView file={file}
