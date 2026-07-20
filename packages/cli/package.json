@@ -1,0 +1,10 @@
+{
+  "name": "@guidiff/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": { "guidiff": "./src/index.ts" },
+  "dependencies": {
+    "@guidiff/schema": "workspace:*",
+    "@guidiff/ui": "workspace:*"
+  }
+}
