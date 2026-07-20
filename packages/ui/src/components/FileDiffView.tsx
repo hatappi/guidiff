@@ -1,6 +1,9 @@
-import type { ReviewComment, ReviewPayload, StoredComment } from '@guidiff/schema';
+import { Fragment, useState } from 'react';
+import type { DiffLine, ReviewComment, ReviewPayload, StoredComment } from '@guidiff/schema';
 import { buildSplitRows } from '../split.ts';
 import { CodeCell } from './DiffLines.tsx';
+import CommentForm from './CommentForm.tsx';
+import CommentThread from './CommentThread.tsx';
 
 type FileWithState = ReviewPayload['files'][number];
 
@@ -14,12 +17,58 @@ export interface FileDiffViewProps {
   onDeleteComment: (id: number) => void;
 }
 
+type LineKey = { side: 'new' | 'old'; line: number };
+type Selection = { side: 'new' | 'old'; start: number; end: number } | null;
+
 const STATUS_LABEL: Record<FileWithState['status'], string> = {
   added: 'Added', modified: 'Modified', deleted: 'Deleted', renamed: 'Renamed',
 };
 
+function lineKey(l: DiffLine): LineKey | null {
+  if (l.newLine !== undefined) return { side: 'new', line: l.newLine };
+  if (l.oldLine !== undefined) return { side: 'old', line: l.oldLine };
+  return null;
+}
+
 export default function FileDiffView(props: FileDiffViewProps) {
   const { file } = props;
+  const [selection, setSelection] = useState<Selection>(null);
+  const [formOpen, setFormOpen] = useState(false);
+
+  const selectRange = (key: LineKey, shiftKey: boolean) => {
+    setSelection((prev) => {
+      if (shiftKey && prev && prev.side === key.side) {
+        return { side: prev.side, start: Math.min(prev.start, key.line), end: Math.max(prev.end, key.line) };
+      }
+      return { side: key.side, start: key.line, end: key.line };
+    });
+    setFormOpen(true);
+  };
+
+  const selectSingle = (key: LineKey | null) => {
+    if (!key) return;
+    setSelection({ side: key.side, start: key.line, end: key.line });
+    setFormOpen(true);
+  };
+
+  const submitComment = (body: string) => {
+    if (!selection) return;
+    props.onAddComment({
+      file: file.path,
+      side: selection.side,
+      startLine: selection.start,
+      endLine: selection.end,
+      body,
+    });
+    setFormOpen(false);
+    setSelection(null);
+  };
+
+  const cancelComment = () => {
+    setFormOpen(false);
+    setSelection(null);
+  };
+
   return (
     <section className="file" id={`file-${file.path}`} data-viewed={file.state.viewed}>
       <div className="file-header">
@@ -44,42 +93,125 @@ export default function FileDiffView(props: FileDiffViewProps) {
         <div className="binary-note">Binary file not shown</div>
       ) : file.state.viewed ? (
         <div className="collapsed-note">Marked as viewed — collapsed</div>
-      ) : viewBody(props)}
+      ) : (
+        file.hunks.map((hunk, i) => (
+          <div key={i}>
+            <div className="hunk-header">{hunk.header}</div>
+            {props.viewMode === 'unified' ? (
+              <table className="hunk"><tbody>
+                {hunk.lines.map((l, j) => {
+                  const key = lineKey(l);
+                  const isSelected = !!(
+                    selection && key && key.side === selection.side
+                    && key.line >= selection.start && key.line <= selection.end
+                  );
+                  const lineComments = props.comments.filter(
+                    (c) => key && c.side === key.side && c.endLine === key.line,
+                  );
+                  const showForm = !!(
+                    formOpen && selection && key
+                    && key.side === selection.side && key.line === selection.end
+                  );
+                  return (
+                    <Fragment key={j}>
+                      <tr
+                        className={`line line-${l.type}${isSelected ? ' selected' : ''}`}
+                        onClick={(e) => {
+                          if (!key) return;
+                          selectRange(key, e.shiftKey);
+                        }}
+                      >
+                        <td className="ln">{l.oldLine ?? ''}</td>
+                        <td className="ln">{l.newLine ?? ''}</td>
+                        <td className="code"><CodeCell text={l.text} filePath={file.path} /></td>
+                      </tr>
+                      {lineComments.length > 0 && (
+                        <tr className="inline-row"><td colSpan={3}>
+                          <CommentThread
+                            comments={lineComments}
+                            onUpdate={props.onUpdateComment}
+                            onDelete={props.onDeleteComment}
+                          />
+                        </td></tr>
+                      )}
+                      {showForm && (
+                        <tr className="inline-row"><td colSpan={3}>
+                          <CommentForm onSubmit={submitComment} onCancel={cancelComment} />
+                        </td></tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody></table>
+            ) : (
+              <table className="hunk hunk-split"><tbody>
+                {buildSplitRows(hunk).map((row, j) => {
+                  const leftKey: LineKey | null = row.left?.oldLine !== undefined
+                    ? { side: 'old', line: row.left.oldLine } : null;
+                  const rightKey: LineKey | null = row.right?.newLine !== undefined
+                    ? { side: 'new', line: row.right.newLine } : null;
+                  const rowComments = props.comments.filter(
+                    (c) => (leftKey && c.side === leftKey.side && c.endLine === leftKey.line)
+                      || (rightKey && c.side === rightKey.side && c.endLine === rightKey.line),
+                  );
+                  const showForm = !!(
+                    formOpen && selection && (
+                      (leftKey && selection.side === leftKey.side
+                        && selection.start === leftKey.line && selection.end === leftKey.line)
+                      || (rightKey && selection.side === rightKey.side
+                        && selection.start === rightKey.line && selection.end === rightKey.line)
+                    )
+                  );
+                  return (
+                    <Fragment key={j}>
+                      <tr>
+                        <td
+                          className={`ln ${row.left ? `line-${row.left.type}` : ''}`}
+                          onClick={() => selectSingle(leftKey)}
+                        >
+                          {row.left?.oldLine ?? ''}
+                        </td>
+                        <td
+                          className={`code ${row.left ? `line-${row.left.type}` : 'empty'}`}
+                          onClick={() => selectSingle(leftKey)}
+                        >
+                          {row.left ? <CodeCell text={row.left.text} filePath={file.path} /> : null}
+                        </td>
+                        <td
+                          className={`ln ${row.right ? `line-${row.right.type}` : ''}`}
+                          onClick={() => selectSingle(rightKey)}
+                        >
+                          {row.right?.newLine ?? ''}
+                        </td>
+                        <td
+                          className={`code ${row.right ? `line-${row.right.type}` : 'empty'}`}
+                          onClick={() => selectSingle(rightKey)}
+                        >
+                          {row.right ? <CodeCell text={row.right.text} filePath={file.path} /> : null}
+                        </td>
+                      </tr>
+                      {rowComments.length > 0 && (
+                        <tr className="inline-row"><td colSpan={4}>
+                          <CommentThread
+                            comments={rowComments}
+                            onUpdate={props.onUpdateComment}
+                            onDelete={props.onDeleteComment}
+                          />
+                        </td></tr>
+                      )}
+                      {showForm && (
+                        <tr className="inline-row"><td colSpan={4}>
+                          <CommentForm onSubmit={submitComment} onCancel={cancelComment} />
+                        </td></tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody></table>
+            )}
+          </div>
+        ))
+      )}
     </section>
   );
-}
-
-function viewBody(props: FileDiffViewProps) {
-  const { file, viewMode } = props;
-  return file.hunks.map((hunk, i) => (
-    <div key={i}>
-      <div className="hunk-header">{hunk.header}</div>
-      {viewMode === 'unified' ? (
-        <table className="hunk"><tbody>
-          {hunk.lines.map((l, j) => (
-            <tr key={j} className={`line line-${l.type}`}>
-              <td className="ln">{l.oldLine ?? ''}</td>
-              <td className="ln">{l.newLine ?? ''}</td>
-              <td className="code"><CodeCell text={l.text} filePath={file.path} /></td>
-            </tr>
-          ))}
-        </tbody></table>
-      ) : (
-        <table className="hunk hunk-split"><tbody>
-          {buildSplitRows(hunk).map((row, j) => (
-            <tr key={j}>
-              <td className={`ln ${row.left ? `line-${row.left.type}` : ''}`}>{row.left?.oldLine ?? ''}</td>
-              <td className={`code ${row.left ? `line-${row.left.type}` : 'empty'}`}>
-                {row.left ? <CodeCell text={row.left.text} filePath={file.path} /> : null}
-              </td>
-              <td className={`ln ${row.right ? `line-${row.right.type}` : ''}`}>{row.right?.newLine ?? ''}</td>
-              <td className={`code ${row.right ? `line-${row.right.type}` : 'empty'}`}>
-                {row.right ? <CodeCell text={row.right.text} filePath={file.path} /> : null}
-              </td>
-            </tr>
-          ))}
-        </tbody></table>
-      )}
-    </div>
-  ));
 }
