@@ -2,18 +2,50 @@ import { useEffect, useState } from 'react';
 import type { ReviewComment, ReviewPayload } from '@guidiff/schema';
 import * as api from './api.ts';
 import FileDiffView from './components/FileDiffView.tsx';
+import GuidePane from './components/GuidePane.tsx';
 
 export default function App() {
   const [payload, setPayload] = useState<ReviewPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'unified' | 'split'>('unified');
+  const [activeFile, setActiveFile] = useState<string | null>(null);
 
   useEffect(() => {
     api.fetchReview().then(setPayload).catch((e) => setError(String(e)));
   }, []);
 
+  useEffect(() => {
+    if (!payload) return;
+    if (typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length > 0) {
+          setActiveFile(visible[0]!.target.id.replace(/^file-/, ''));
+        }
+      },
+      { rootMargin: '0px 0px -70% 0px' },
+    );
+    document.querySelectorAll('.file').forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [payload]);
+
   if (error) return <div className="error">Failed to load review: {error}</div>;
   if (!payload) return <div className="loading">Loading…</div>;
+
+  const jumpTo = (file: string, _line?: number) => {
+    document.getElementById(`file-${file}`)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  };
+
+  const toggleSection = (id: string, reviewed: boolean) => {
+    api.setSectionReviewed(id, reviewed).catch(() => {});
+    setPayload((p) => p && {
+      ...p,
+      reviewedSections: reviewed
+        ? [...p.reviewedSections, id]
+        : p.reviewedSections.filter((s) => s !== id),
+    });
+  };
 
   const toggleViewed = (path: string, viewed: boolean) => {
     api.setFileViewed(path, viewed).catch(() => {});
@@ -48,25 +80,52 @@ export default function App() {
       <header className="header">
         <h1>guidiff</h1>
         <span className="target">{payload.target}</span>
-        <span className="progress">{viewedCount} / {payload.files.length} files viewed</span>
+        <span className="progress">
+          {payload.guide
+            ? `${payload.reviewedSections.length} / ${payload.guide.sections.length} sections reviewed`
+            : `${viewedCount} / ${payload.files.length} files viewed`}
+        </span>
         <button className="view-toggle" onClick={() => setViewMode(viewMode === 'unified' ? 'split' : 'unified')}>
           {viewMode === 'unified' ? 'Split view' : 'Unified view'}
         </button>
       </header>
-      <main className="main">
-        {payload.files.map((f) => (
-          <FileDiffView
-            key={f.path}
-            file={f}
-            comments={payload.comments.filter((c) => c.file === f.path)}
-            viewMode={viewMode}
-            onToggleViewed={toggleViewed}
-            onAddComment={addComment}
-            onUpdateComment={updateComment}
-            onDeleteComment={deleteComment}
+      <div className="layout">
+        {payload.guide ? (
+          <GuidePane
+            guide={payload.guide}
+            reviewedSections={payload.reviewedSections}
+            fileViewed={Object.fromEntries(payload.files.map((f) => [f.path, f.state.viewed]))}
+            activeFile={activeFile}
+            onToggleSection={toggleSection}
+            onJump={jumpTo}
           />
-        ))}
-      </main>
+        ) : (
+          <aside className="guide-pane">
+            <h2>Files</h2>
+            <ul className="file-list">
+              {payload.files.map((f) => (
+                <li key={f.path}>
+                  <button className="anchor-link" onClick={() => jumpTo(f.path)}>{f.path}</button>
+                </li>
+              ))}
+            </ul>
+          </aside>
+        )}
+        <main className="main">
+          {payload.files.map((f) => (
+            <FileDiffView
+              key={f.path}
+              file={f}
+              comments={payload.comments.filter((c) => c.file === f.path)}
+              viewMode={viewMode}
+              onToggleViewed={toggleViewed}
+              onAddComment={addComment}
+              onUpdateComment={updateComment}
+              onDeleteComment={deleteComment}
+            />
+          ))}
+        </main>
+      </div>
     </div>
   );
 }
