@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import type { RefObject } from 'react';
 import type { GuideSection } from '@guidiff/schema';
 import { nearestCardId } from '../scroll-sync.ts';
 import type { SectionGroup } from '../sections.ts';
@@ -13,12 +14,16 @@ export interface GuidePaneProps {
   onJump: (file: string, line?: number) => void;
   /** Fired when a user scroll settles on a card (snap position reached). */
   onSettle: (sectionId: string) => void;
+  /** Ref to the snap container, written directly by App's boundary-synced scroll handler. */
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
+  /** Timestamp (ms) of the last programmatic scrollTop write; settle ignores scroll/scrollend within 200ms of it. */
+  programmaticWriteAt: RefObject<number>;
 }
 
 const IMPORTANCE_LABEL = { core: 'Core', supporting: 'Supporting', 'low-signal': 'Low signal' } as const;
 
 export default function GuidePane(props: GuidePaneProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = props.scrollContainerRef;
   const settleRef = useRef(props.onSettle);
   settleRef.current = props.onSettle;
 
@@ -27,6 +32,9 @@ export default function GuidePane(props: GuidePaneProps) {
     if (!el) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const settle = () => {
+      // Ignore settles caused by App's own programmatic scrollTop writes
+      // (boundary-synced scroll), not a real user scroll.
+      if (Date.now() - props.programmaticWriteAt.current < 200) return;
       const cards = Array.from(el.querySelectorAll<HTMLElement>('.guide-card')).map((c) => ({
         id: c.id.replace(/^guide-card-/, ''),
         offsetTop: c.offsetTop,
@@ -46,7 +54,7 @@ export default function GuidePane(props: GuidePaneProps) {
       el.removeEventListener('scrollend', settle);
       el.removeEventListener('scroll', onScroll);
     };
-  }, [props.groups]);
+  }, [props.groups, props.programmaticWriteAt, containerRef]);
 
   return (
     <aside className="guide-pane guide-pane--sections">
@@ -61,7 +69,11 @@ export default function GuidePane(props: GuidePaneProps) {
             section={g.section}
             position={`${i + 1} / ${props.groups.length}`}
             reviewed={props.reviewedSections.includes(g.section.id)}
-            allViewed={g.section.anchors.length > 0 && g.section.anchors.every((a) => props.fileViewed[a.file])}
+            files={g.files.map((f) => ({
+              path: f.path,
+              line: g.section.anchors.find((a) => a.file === f.path)?.lines?.[0],
+            }))}
+            allViewed={g.files.length > 0 && g.files.every((f) => props.fileViewed[f.path])}
             onToggleSection={props.onToggleSection}
             onJump={props.onJump}
           />
@@ -75,6 +87,7 @@ function SectionCardView(props: {
   section: GuideSection;
   position: string;
   reviewed: boolean;
+  files: Array<{ path: string; line?: number }>;
   allViewed: boolean;
   onToggleSection: (id: string, reviewed: boolean) => void;
   onJump: (file: string, line?: number) => void;
@@ -95,10 +108,10 @@ function SectionCardView(props: {
       <p className="guide-section-desc">{section.description}</p>
       {props.allViewed && <span className="section-done">All files viewed</span>}
       <ul className="anchors">
-        {section.anchors.map((a) => (
-          <li key={`${a.file}:${a.lines?.[0] ?? ''}`}>
-            <button className="anchor-link" onClick={() => props.onJump(a.file, a.lines?.[0])}>
-              {a.lines ? `${a.file}:${a.lines[0]}` : a.file}
+        {props.files.map((f) => (
+          <li key={`${f.path}:${f.line ?? ''}`}>
+            <button className="anchor-link" onClick={() => props.onJump(f.path, f.line)}>
+              {f.line != null ? `${f.path}:${f.line}` : f.path}
             </button>
           </li>
         ))}
