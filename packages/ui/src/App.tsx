@@ -23,6 +23,7 @@ export default function App() {
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const syncSource = useRef<'left' | 'right' | null>(null);
   const syncTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const lastSectionRef = useRef<string | null>(null);
 
   const groups = useMemo(
     () => (payload?.guide ? buildSectionGroups(payload.guide, payload.files) : null),
@@ -31,15 +32,14 @@ export default function App() {
 
   /** source = the pane the user interacted with; scrolls the OTHER pane. */
   const activateSection = (id: string, source: 'left' | 'right') => {
-    setActiveSectionId((prev) => {
-      if (prev === id) return prev;
-      syncSource.current = source;
-      const targetId = source === 'right' ? `guide-card-${id}` : `section-${id}`;
-      document.getElementById(targetId)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-      clearTimeout(syncTimer.current);
-      syncTimer.current = setTimeout(() => { syncSource.current = null; }, 600);
-      return id;
-    });
+    if (lastSectionRef.current === id) return;
+    lastSectionRef.current = id;
+    syncSource.current = source;
+    const targetId = source === 'right' ? `guide-card-${id}` : `section-${id}`;
+    document.getElementById(targetId)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    clearTimeout(syncTimer.current);
+    syncTimer.current = setTimeout(() => { syncSource.current = null; }, 600);
+    setActiveSectionId(id);
   };
 
   // Right-pane group observer: topmost visible group drives the left pane.
