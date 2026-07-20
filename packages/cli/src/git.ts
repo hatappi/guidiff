@@ -112,7 +112,9 @@ export async function collectDiff(repoRoot: string, spec: DiffSpec): Promise<Fil
   for (const path of untrackedList) {
     // git diff --no-index exits 1 when files differ; that's expected.
     const patch = await git(repoRoot, [...DIFF_BASE_ARGS, '--no-index', '--', '/dev/null', path], true);
-    untracked.push(...parseUnifiedDiff(patch));
+    for (const f of parseUnifiedDiff(patch)) {
+      untracked.push({ ...f, path, status: 'added', oldPath: undefined });
+    }
   }
   return [...tracked, ...untracked];
 }
