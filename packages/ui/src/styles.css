@@ -146,3 +146,4 @@ button.primary:disabled { opacity: 0.5; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .submit-error { font-size: 13px; color: var(--danger); margin-bottom: 8px; }
 .done { padding: 64px; text-align: center; font-size: 16px; }
+.section-group { min-height: calc(100vh - 49px); box-sizing: border-box; }
