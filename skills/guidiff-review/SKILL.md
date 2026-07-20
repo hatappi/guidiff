@@ -8,6 +8,7 @@ description: This skill should be used when the user asks to review code changes
   and comments.
 allowed-tools:
   - Bash(guidiff:*)
+  - Bash(command -v guidiff)
   - Bash(git diff:*)
   - Bash(git status:*)
   - Read
@@ -23,13 +24,24 @@ stdout (exit 0). Exit 2 means the review was cancelled; exit 1 is an error.
 
 ## Flow
 
-### 1. Write an intent brief
+### 1. Preflight: check the CLI is installed
+
+Run `command -v guidiff` (Bash). If it is missing, stop and tell the user how to
+install it — do not attempt the review without it:
+
+    git clone https://github.com/hatappi/guidiff && cd guidiff
+    bun install && bun run build:binary
+    mv guidiff ~/.local/bin/   # or anywhere on PATH
+
+Then continue once `guidiff --help` works.
+
+### 2. Write an intent brief
 
 Summarize in 3-5 bullet points, from your own context: what was changed and why, what
 the reviewer should scrutinize, and anything intentionally left out. You know this;
 do not re-read the diff for it.
 
-### 2. Generate the guide JSON
+### 3. Generate the guide JSON
 
 Check the diff size first: `git diff --stat HEAD` (or the refs being reviewed).
 
@@ -70,7 +82,7 @@ Guide-writing principles:
 - Descriptions explain intent and impact, not what the code literally says.
 - Anchor every section to the exact files/lines that prove it.
 
-### 3. Launch guidiff in the background
+### 4. Launch guidiff in the background
 
 Run with the Bash tool with `run_in_background: true` (a foreground run would hit the
 10-minute timeout while the user reviews):
@@ -83,7 +95,7 @@ guidiff --guide <scratchpad>/guidiff-guide-<timestamp>.json
 the working tree.) Tell the user the review UI is opening in their browser, then stop —
 the task notification will arrive when they submit.
 
-### 4. Handle the result
+### 5. Handle the result
 
 When the background task exits, read its output:
 
@@ -97,7 +109,7 @@ When the background task exits, read its output:
 - **exit 2**: the review was cancelled. Say so and stop; do not act on the diff.
 - **exit 1**: read stderr, fix the problem (e.g. regenerate an invalid guide) and retry once.
 
-### 5. Re-review cycle
+### 6. Re-review cycle
 
 When re-running after fixes, append to the intent brief: the previous review's comments
 and what you changed in response. Instruct the guide generator to put a "What changed

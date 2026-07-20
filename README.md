@@ -17,8 +17,12 @@ returns your review straight to the AI session that launched it.
 ## Install
 
 ```bash
-bun install -g guidiff   # or: brew install hatappi/tap/guidiff (planned)
+git clone https://github.com/hatappi/guidiff && cd guidiff
+bun install && bun run build:binary
+mv guidiff ~/.local/bin/   # or anywhere on your PATH
 ```
+
+npm / Homebrew packages are planned.
 
 ## Usage
 
