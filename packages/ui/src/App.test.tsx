@@ -1,5 +1,5 @@
 import { describe, expect, test, mock } from 'bun:test';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ReviewPayload } from '@guidiff/schema';
 import App from './App.tsx';
 
@@ -61,17 +61,34 @@ describe('App', () => {
     expect(screen.getByText('const a = 2;')).toBeTruthy();
   });
 
-  test('with a guide, files render grouped under section headers incl. other-changes', async () => {
+  test('with a guide, the right pane renders only the active section', async () => {
     payloadToServe = guidedPayload;
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector('#section-core')).toBeTruthy());
+
     const core = container.querySelector('#section-core') as HTMLElement;
     expect(within(core).getByText('Core stuff')).toBeTruthy();
     expect(within(core).getAllByText('src/a.ts').length).toBeGreaterThan(0);
-    const other = container.querySelector('#section-other-changes') as HTMLElement;
-    expect(other).toBeTruthy();
-    expect(within(other).getAllByText('src/extra.ts').length).toBeGreaterThan(0);
-    // guide cards on the left
+
+    // The inactive "Other changes" group is not rendered on the right...
+    expect(container.querySelector('#section-other-changes')).toBeNull();
+    // ...even though the left pane always renders a card for every section.
     expect(container.querySelector('#guide-card-core')).toBeTruthy();
+    const otherCard = container.querySelector('#guide-card-other-changes') as HTMLElement;
+    expect(otherCard).toBeTruthy();
+  });
+
+  test('clicking an anchor for a file outside the active section switches the right pane to it', async () => {
+    payloadToServe = guidedPayload;
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector('#section-core')).toBeTruthy());
+
+    const otherCard = container.querySelector('#guide-card-other-changes') as HTMLElement;
+    fireEvent.click(within(otherCard).getByText('src/extra.ts'));
+
+    await waitFor(() => expect(container.querySelector('#section-other-changes')).toBeTruthy());
+    expect(container.querySelector('#section-core')).toBeNull();
+    const other = container.querySelector('#section-other-changes') as HTMLElement;
+    expect(within(other).getAllByText('src/extra.ts').length).toBeGreaterThan(0);
   });
 });
