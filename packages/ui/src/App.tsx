@@ -149,9 +149,7 @@ export default function App() {
         <SubmitModal
           comments={payload.comments}
           onClose={() => setModalOpen(false)}
-          onSubmit={(verdict, overall) => {
-            api.submitReview(verdict, overall).then(() => setFinished('submit')).catch((e) => setError(String(e)));
-          }}
+          onSubmit={(verdict, overall) => api.submitReview(verdict, overall).then(() => setFinished('submit'))}
         />
       )}
     </div>

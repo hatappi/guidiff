@@ -3,11 +3,13 @@ import type { StoredComment, Verdict } from '@guidiff/schema';
 
 export default function SubmitModal(props: {
   comments: StoredComment[];
-  onSubmit: (verdict: Verdict, overallComment?: string) => void;
+  onSubmit: (verdict: Verdict, overallComment?: string) => void | Promise<void>;
   onClose: () => void;
 }) {
   const [verdict, setVerdict] = useState<Verdict>('approve');
   const [overall, setOverall] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const n = props.comments.length;
   return (
     <div className="modal-backdrop" onClick={props.onClose}>
@@ -41,10 +43,24 @@ export default function SubmitModal(props: {
             ))}
           </ul>
         </div>
+        {submitError && (
+          <div className="submit-error">Submit failed: {submitError}. The review stays open — try again.</div>
+        )}
         <div className="modal-actions">
-          <button onClick={props.onClose}>Back</button>
-          <button className="primary" onClick={() => props.onSubmit(verdict, overall.trim() || undefined)}>
-            Submit review
+          <button onClick={props.onClose} disabled={submitting}>Back</button>
+          <button
+            className="primary"
+            disabled={submitting}
+            onClick={() => {
+              setSubmitting(true);
+              setSubmitError(null);
+              Promise.resolve(props.onSubmit(verdict, overall.trim() || undefined)).catch((e) => {
+                setSubmitError(String(e));
+                setSubmitting(false);
+              });
+            }}
+          >
+            {submitting ? 'Submitting…' : 'Submit review'}
           </button>
         </div>
       </div>

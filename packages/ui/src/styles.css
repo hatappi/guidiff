@@ -79,4 +79,5 @@ button.primary:disabled { opacity: 0.5; }
 .modal-comments ul { padding-left: 16px; }
 .comment-loc { font-family: monospace; color: var(--fg-muted); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.submit-error { font-size: 13px; color: #cf222e; margin-bottom: 8px; }
 .done { padding: 64px; text-align: center; font-size: 16px; }
