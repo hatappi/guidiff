@@ -24,9 +24,8 @@ export default function App() {
   const syncSource = useRef<'left' | null>(null);
   const syncTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastSectionRef = useRef<string | null>(null);
-  const guideScrollRef = useRef<HTMLDivElement | null>(null);
-  const lastLeftWriteAt = useRef(0);
-  const syncingDecay = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const trackTransitionTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const groups = useMemo(
     () => (payload?.guide ? buildSectionGroups(payload.guide, payload.files) : null),
@@ -60,16 +59,39 @@ export default function App() {
     return true;
   };
 
-  const onGuideSettle = (id: string) => {
-    if (syncSource.current === 'left') return;
-    activateSection(id);
+  /**
+   * Animates the guide track to the given section index with a temporary
+   * CSS transition, then clears the transition so the boundary-synced
+   * scroll handler's direct transform writes stay instant.
+   */
+  const animateTrackTo = (index: number) => {
+    const track = trackRef.current;
+    const paneH = track?.parentElement?.clientHeight || 0;
+    if (!track || paneH <= 0) return;
+    clearTimeout(trackTransitionTimer.current);
+    track.style.transition = 'transform 250ms ease';
+    track.style.transform = `translateY(${-(index * paneH)}px)`;
+    trackTransitionTimer.current = setTimeout(() => {
+      track.style.transition = '';
+    }, 260);
+  };
+
+  /** Wheel-driven step from the left pane: move to the adjacent section. */
+  const onStep = (direction: 'next' | 'prev') => {
+    if (!groups || groups.length === 0) return;
+    const currentIndex = groups.findIndex((g) => g.section.id === lastSectionRef.current);
+    const base = currentIndex === -1 ? 0 : currentIndex;
+    const targetIndex = direction === 'next' ? base + 1 : base - 1;
+    if (targetIndex < 0 || targetIndex >= groups.length) return;
+    activateSection(groups[targetIndex]!.section.id);
+    animateTrackTo(targetIndex);
   };
 
   // Boundary-synced scroll: as the user scrolls the right pane, compute a
   // continuous section index from where each group's bottom edge sits in
-  // the viewport, then write the left pane's snap container scrollTop as a
-  // proportional interpolation between the active and next card. Skipped
-  // while a left-driven guided scroll is in flight (syncSource === 'left').
+  // the viewport, then write the left pane track's transform directly
+  // (no transition, so it tracks the scroll 1:1). Skipped while a
+  // left-driven guided scroll is in flight (syncSource === 'left').
   useEffect(() => {
     if (!groups || groups.length === 0) return;
     if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return;
@@ -82,25 +104,11 @@ export default function App() {
       const bottoms = els.map((el) => el!.getBoundingClientRect().bottom);
       const ci = continuousSectionIndex(bottoms, H);
       const active = Math.min(Math.floor(ci), groups.length - 1);
-      const frac = ci - active;
 
-      const container = guideScrollRef.current;
-      if (container) {
-        const cur = document.getElementById(`guide-card-${groups[active]!.section.id}`);
-        const next = active + 1 < groups.length
-          ? document.getElementById(`guide-card-${groups[active + 1]!.section.id}`)
-          : null;
-        if (cur) {
-          lastLeftWriteAt.current = Date.now();
-          container.classList.add('syncing');
-          container.scrollTop = next
-            ? cur.offsetTop + frac * (next.offsetTop - cur.offsetTop)
-            : cur.offsetTop;
-          clearTimeout(syncingDecay.current);
-          syncingDecay.current = setTimeout(() => {
-            guideScrollRef.current?.classList.remove('syncing');
-          }, 250);
-        }
+      const track = trackRef.current;
+      const paneH = track?.parentElement?.clientHeight || 0;
+      if (track && paneH > 0) {
+        track.style.transform = `translateY(${-(ci * paneH)}px)`;
       }
 
       const id = groups[active]!.section.id;
@@ -111,11 +119,7 @@ export default function App() {
     };
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      clearTimeout(syncingDecay.current);
-      guideScrollRef.current?.classList.remove('syncing');
-    };
+    return () => window.removeEventListener('scroll', onScroll);
   }, [groups]);
 
   if (finished === 'submit') {
@@ -202,9 +206,8 @@ export default function App() {
             fileViewed={Object.fromEntries(payload.files.map((f) => [f.path, f.state.viewed]))}
             onToggleSection={toggleSection}
             onJump={jumpTo}
-            onSettle={onGuideSettle}
-            scrollContainerRef={guideScrollRef}
-            programmaticWriteAt={lastLeftWriteAt}
+            trackRef={trackRef}
+            onStep={onStep}
           />
         ) : (
           <aside className="guide-pane">

@@ -22,15 +22,14 @@ const files = [file('src/auth.ts'), file('bun.lock'), file('extra.ts')];
 const groups = buildSectionGroups(guide, files);
 const noop = () => {};
 const noopRef = { current: null };
-const zeroRef = { current: 0 };
 
 function renderPane(overrides: Partial<Parameters<typeof GuidePane>[0]> = {}) {
   return render(
     <GuidePane
       title={guide.title} summary={guide.summary} groups={groups}
       reviewedSections={[]} fileViewed={{}}
-      onToggleSection={noop} onJump={noop} onSettle={noop}
-      scrollContainerRef={noopRef} programmaticWriteAt={zeroRef}
+      onToggleSection={noop} onJump={noop}
+      trackRef={noopRef} onStep={noop}
       {...overrides}
     />,
   );
@@ -51,9 +50,11 @@ const dupGuide: Guide = {
 const dupFiles = [file('shared.ts'), file('only-second.ts')];
 const dupGroups = buildSectionGroups(dupGuide, dupFiles);
 
-test('renders one snap card per group in guide order with position meta', () => {
+test('renders one card per group in guide order with position meta, inside a viewport/track', () => {
   const { container } = renderPane();
-  const cards = Array.from(container.querySelectorAll('.guide-card'));
+  expect(container.querySelector('.guide-viewport')).toBeTruthy();
+  expect(container.querySelector('.guide-viewport .guide-track')).toBeTruthy();
+  const cards = Array.from(container.querySelectorAll('.guide-track > .guide-card'));
   expect(cards.map((c) => c.id)).toEqual([
     'guide-card-core', 'guide-card-lockfile', 'guide-card-other-changes',
   ]);
@@ -95,8 +96,8 @@ test('a file anchored by two sections is shown only on the first (owning) sectio
     <GuidePane
       title={dupGuide.title} summary={dupGuide.summary} groups={dupGroups}
       reviewedSections={[]} fileViewed={{}}
-      onToggleSection={noop} onJump={noop} onSettle={noop}
-      scrollContainerRef={noopRef} programmaticWriteAt={zeroRef}
+      onToggleSection={noop} onJump={noop}
+      trackRef={noopRef} onStep={noop}
     />,
   );
   const first = container.querySelector('#guide-card-first') as HTMLElement;
@@ -104,4 +105,25 @@ test('a file anchored by two sections is shown only on the first (owning) sectio
   expect(within(first).getByText('shared.ts')).toBeTruthy();
   expect(within(second).queryByText('shared.ts')).toBeNull();
   expect(within(second).getByText('only-second.ts')).toBeTruthy();
+});
+
+test('wheel down on the viewport steps to the next section once, then ignores repeats within the cooldown', () => {
+  const onStep = mock(noop);
+  const { container } = renderPane({ onStep });
+  const viewport = container.querySelector('.guide-viewport') as HTMLElement;
+  fireEvent.wheel(viewport, { deltaY: 100 });
+  expect(onStep).toHaveBeenCalledTimes(1);
+  expect(onStep).toHaveBeenCalledWith('next');
+  fireEvent.wheel(viewport, { deltaY: 100 });
+  fireEvent.wheel(viewport, { deltaY: 100 });
+  expect(onStep).toHaveBeenCalledTimes(1);
+});
+
+test('wheel up on the viewport steps to the previous section', () => {
+  const onStep = mock(noop);
+  const { container } = renderPane({ onStep });
+  const viewport = container.querySelector('.guide-viewport') as HTMLElement;
+  fireEvent.wheel(viewport, { deltaY: -100 });
+  expect(onStep).toHaveBeenCalledTimes(1);
+  expect(onStep).toHaveBeenCalledWith('prev');
 });
