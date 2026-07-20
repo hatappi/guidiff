@@ -27,6 +27,7 @@ export default function App() {
   const syncTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastSectionRef = useRef<string | null>(null);
   const overscrollTracker = useRef(createOverscrollTracker(OVERSCROLL_THRESHOLD));
+  const activeSectionIdRef = useRef<string | null>(activeSectionId);
 
   const groups = useMemo(
     () => (payload?.guide ? buildSectionGroups(payload.guide, payload.files) : null),
@@ -43,6 +44,13 @@ export default function App() {
     lastSectionRef.current = fallback;
     setActiveSectionId(fallback);
   }, [groups, activeSectionId]);
+
+  // Keep a ref mirror of activeSectionId so the wheel-listener effect below
+  // can read the latest value without needing activeSectionId in its own
+  // dependency array (see comment there for why that matters).
+  useEffect(() => {
+    activeSectionIdRef.current = activeSectionId;
+  }, [activeSectionId]);
 
   /**
    * source = the pane the user interacted with. Returns whether the section
@@ -73,11 +81,19 @@ export default function App() {
   // Edge-scroll paging: overscrolling past the bottom/top of the right pane
   // pages to the next/previous section. Wheel events originating inside the
   // left pane's own scroll container are ignored.
+  //
+  // Deliberately depends on `groups` only, NOT `activeSectionId`: the
+  // overscroll tracker suppresses re-firing until the wheel goes quiet
+  // after each page (see overscroll.ts), and activeSectionId changes on
+  // every successful page. If this effect re-registered on every page
+  // change, its cleanup/setup cycle would tear down and re-attach the
+  // listener each time — and if it reset the tracker here too, that would
+  // clear suppression right after firing and let the same flick's inertia
+  // page through several sections. The listener instead reads the current
+  // section via activeSectionIdRef, kept in sync by the effect above.
   useEffect(() => {
     if (!groups || groups.length === 0) return;
     if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return;
-
-    overscrollTracker.current.reset();
 
     const onWheel = (e: WheelEvent) => {
       if (e.target instanceof Element && e.target.closest('.guide-snap-container')) return;
@@ -93,7 +109,8 @@ export default function App() {
       if (!result) return;
 
       const order = groups.map((g) => g.section.id);
-      const index = activeSectionId ? order.indexOf(activeSectionId) : -1;
+      const currentSectionId = activeSectionIdRef.current;
+      const index = currentSectionId ? order.indexOf(currentSectionId) : -1;
       if (index === -1) return;
       const targetIndex = result === 'next' ? index + 1 : index - 1;
       if (targetIndex < 0 || targetIndex >= order.length) return;
@@ -111,8 +128,14 @@ export default function App() {
     };
 
     window.addEventListener('wheel', onWheel, { passive: true });
-    return () => window.removeEventListener('wheel', onWheel);
-  }, [groups, activeSectionId]);
+    // Reset the tracker only when this listener is torn down (groups
+    // changed — effectively a new review loaded — or the component
+    // unmounts), never on a routine section switch.
+    return () => {
+      window.removeEventListener('wheel', onWheel);
+      overscrollTracker.current.reset();
+    };
+  }, [groups]);
 
   if (finished === 'submit') {
     return (

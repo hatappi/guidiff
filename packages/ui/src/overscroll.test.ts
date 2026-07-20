@@ -53,6 +53,25 @@ describe('createOverscrollTracker', () => {
     tracker.reset();
     expect(tracker.feed('bottom', 100, 10)).toBeNull();
   });
+
+  test('momentum after a fire does not re-fire until the wheel goes quiet', () => {
+    const t = createOverscrollTracker(120);
+    expect(t.feed('bottom', 130, 0)).toBe('next');            // fires
+    expect(t.feed('bottom', 200, 50)).toBeNull();              // inertia, suppressed
+    expect(t.feed('bottom', 200, 120)).toBeNull();             // still same gesture
+    expect(t.feed('bottom', 500, 200)).toBeNull();             // still suppressed regardless of size
+  });
+
+  test('a new gesture after 300ms quiet can fire again', () => {
+    const t = createOverscrollTracker(120);
+    expect(t.feed('bottom', 130, 0)).toBe('next');
+    expect(t.feed('bottom', 200, 100)).toBeNull();             // inertia
+    // Quiet gap (500 - 100 = 400ms >= 300ms) lifts suppression, and this
+    // event is processed normally as the start of a fresh gesture: its own
+    // delta (130) already exceeds the threshold (120), so it fires 'next'
+    // immediately rather than needing a separate follow-up event.
+    expect(t.feed('bottom', 130, 500)).toBe('next');
+  });
 });
 
 describe('classifyEdge', () => {
