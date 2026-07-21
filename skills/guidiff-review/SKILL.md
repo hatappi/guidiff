@@ -60,12 +60,12 @@ Guide JSON schema (validated by guidiff with zod):
 {
   "version": 1,
   "title": "Short title of the change",
-  "summary": "2-3 sentence overview shown at the top of the review",
+  "summary": "2-3 sentence overview shown at the top of the review; separate sentences with \n",
   "sections": [            // ordered: recommended reading order
     {
       "id": "kebab-case-id",
       "title": "The heart of the change",
-      "description": "Purpose, impact, and why it was implemented this way",
+      "description": "Purpose, impact, and why it was implemented this way; separate sentences with \n",
       "importance": "core",              // "core" | "supporting" | "low-signal"
       "anchors": [                        // direct links into the diff
         { "file": "src/auth.ts" },        // whole file
@@ -80,6 +80,9 @@ Guide-writing principles:
 - Put the conceptual core first, wiring and call sites second, generated/low-signal
   churn (lockfiles, snapshots) last as `low-signal`.
 - Descriptions explain intent and impact, not what the code literally says.
+- Break `summary` and `description` into short lines with `\n` — one sentence or
+  idea per line. The UI preserves newlines (`white-space: pre-line`); a single
+  long paragraph is hard to read in the narrow guide pane.
 - Titles state what the section is about, nothing more. Never prefix them with the
   importance level (no "Core:", "Low-signal:", etc.) — the UI already renders
   `importance` as an icon next to the title.
