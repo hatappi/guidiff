@@ -13,11 +13,12 @@ const file = {
 };
 const noop = () => {};
 
-test('clicking a line opens form; submitting calls onAddComment with that line', () => {
+test('mousedown+mouseup on a line number opens form; submitting calls onAddComment with that line', () => {
   const onAddComment = mock(noop);
   render(<FileDiffView file={file} comments={[]} viewMode="unified"
     onToggleViewed={noop} onAddComment={onAddComment} onUpdateComment={noop} onDeleteComment={noop} />);
-  fireEvent.click(screen.getByText('line one'));
+  fireEvent.mouseDown(screen.getByText('1'));
+  fireEvent.mouseUp(document);
   fireEvent.change(screen.getByPlaceholderText('Leave a comment'), { target: { value: 'looks off' } });
   fireEvent.click(screen.getByText('Add comment'));
   expect(onAddComment).toHaveBeenCalledWith({
@@ -25,12 +26,13 @@ test('clicking a line opens form; submitting calls onAddComment with that line',
   });
 });
 
-test('shift-click extends selection to a range', () => {
+test('dragging across line numbers selects a range', () => {
   const onAddComment = mock(noop);
   render(<FileDiffView file={file} comments={[]} viewMode="unified"
     onToggleViewed={noop} onAddComment={onAddComment} onUpdateComment={noop} onDeleteComment={noop} />);
-  fireEvent.click(screen.getByText('line one'));
-  fireEvent.click(screen.getByText('line two'), { shiftKey: true });
+  fireEvent.mouseDown(screen.getByText('1'));
+  fireEvent.mouseEnter(screen.getByText('2'));
+  fireEvent.mouseUp(document);
   fireEvent.change(screen.getByPlaceholderText('Leave a comment'), { target: { value: 'range' } });
   fireEvent.click(screen.getByText('Add comment'));
   expect(onAddComment).toHaveBeenCalledWith({
@@ -38,7 +40,30 @@ test('shift-click extends selection to a range', () => {
   });
 });
 
-test('split view: clicking a context line via the left column submits comment with side "new"', () => {
+test('shift+mousedown extends an existing selection', () => {
+  const onAddComment = mock(noop);
+  render(<FileDiffView file={file} comments={[]} viewMode="unified"
+    onToggleViewed={noop} onAddComment={onAddComment} onUpdateComment={noop} onDeleteComment={noop} />);
+  fireEvent.mouseDown(screen.getByText('1'));
+  fireEvent.mouseUp(document);
+  fireEvent.mouseDown(screen.getByText('2'), { shiftKey: true });
+  fireEvent.change(screen.getByPlaceholderText('Leave a comment'), { target: { value: 'range' } });
+  fireEvent.click(screen.getByText('Add comment'));
+  expect(onAddComment).toHaveBeenCalledWith({
+    file: 'src/a.ts', side: 'new', startLine: 1, endLine: 2, body: 'range',
+  });
+});
+
+test('clicking or dragging the code cell does nothing', () => {
+  render(<FileDiffView file={file} comments={[]} viewMode="unified"
+    onToggleViewed={noop} onAddComment={noop} onUpdateComment={noop} onDeleteComment={noop} />);
+  fireEvent.click(screen.getByText('line one'));
+  fireEvent.mouseDown(screen.getByText('line one'));
+  fireEvent.mouseUp(document);
+  expect(screen.queryByPlaceholderText('Leave a comment')).toBeNull();
+});
+
+test('split view: mousedown+mouseup on the left column line number comments the new side for context lines', () => {
   const splitFile = {
     path: 'src/b.ts', status: 'modified' as const, binary: false,
     hunks: [{ header: '@@ -3,1 +5,1 @@', lines: [
@@ -50,8 +75,8 @@ test('split view: clicking a context line via the left column submits comment wi
   const onAddComment = mock(noop);
   render(<FileDiffView file={splitFile} comments={[]} viewMode="split"
     onToggleViewed={noop} onAddComment={onAddComment} onUpdateComment={noop} onDeleteComment={noop} />);
-  // "3" is the old-side line number, shown only in the left column's line-number cell.
-  fireEvent.click(screen.getByText('3'));
+  fireEvent.mouseDown(screen.getByText('3'));
+  fireEvent.mouseUp(document);
   fireEvent.change(screen.getByPlaceholderText('Leave a comment'), { target: { value: 'ctx note' } });
   fireEvent.click(screen.getByText('Add comment'));
   expect(onAddComment).toHaveBeenCalledWith({

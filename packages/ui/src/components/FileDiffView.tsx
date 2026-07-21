@@ -1,4 +1,5 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import type { MouseEvent } from 'react';
 import type { DiffLine, ReviewComment, ReviewPayload, StoredComment } from '@guidiff/schema';
 import { buildSplitRows } from '../split.ts';
 import { CodeCell } from './DiffLines.tsx';
@@ -34,22 +35,55 @@ export default function FileDiffView(props: FileDiffViewProps) {
   const { file } = props;
   const [selection, setSelection] = useState<Selection>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const dragAnchor = useRef<LineKey | null>(null);
 
-  const selectRange = (key: LineKey, shiftKey: boolean) => {
-    setSelection((prev) => {
-      if (shiftKey && prev && prev.side === key.side) {
-        return { side: prev.side, start: Math.min(prev.start, key.line), end: Math.max(prev.end, key.line) };
-      }
-      return { side: key.side, start: key.line, end: key.line };
-    });
-    setFormOpen(true);
-  };
+  useEffect(() => {
+    if (!dragging) return;
+    const onUp = () => {
+      dragAnchor.current = null;
+      setDragging(false);
+      setFormOpen(true);
+    };
+    document.addEventListener('mouseup', onUp);
+    return () => document.removeEventListener('mouseup', onUp);
+  }, [dragging]);
 
-  const selectSingle = (key: LineKey | null) => {
+  const beginSelect = (key: LineKey | null, shiftKey: boolean) => {
     if (!key) return;
+    if (shiftKey) {
+      setSelection((prev) => {
+        if (prev && prev.side === key.side) {
+          return { side: prev.side, start: Math.min(prev.start, key.line), end: Math.max(prev.end, key.line) };
+        }
+        return { side: key.side, start: key.line, end: key.line };
+      });
+      setFormOpen(true);
+      return;
+    }
+    dragAnchor.current = key;
+    setDragging(true);
+    setFormOpen(false);
     setSelection({ side: key.side, start: key.line, end: key.line });
-    setFormOpen(true);
   };
+
+  const extendSelect = (key: LineKey | null) => {
+    const anchor = dragAnchor.current;
+    if (!anchor || !key || key.side !== anchor.side) return;
+    setSelection({
+      side: anchor.side,
+      start: Math.min(anchor.line, key.line),
+      end: Math.max(anchor.line, key.line),
+    });
+  };
+
+  const lnProps = (key: LineKey | null) => ({
+    onMouseDown: (e: MouseEvent<HTMLTableCellElement>) => {
+      e.preventDefault();
+      beginSelect(key, e.shiftKey);
+    },
+    onMouseEnter: dragging ? () => extendSelect(key) : undefined,
+  });
 
   const submitComment = (body: string) => {
     if (!selection) return;
@@ -70,7 +104,8 @@ export default function FileDiffView(props: FileDiffViewProps) {
   };
 
   return (
-    <section className="file" id={`file-${file.path}`} data-viewed={file.state.viewed}>
+    <section className="file" id={`file-${file.path}`} data-viewed={file.state.viewed}
+      data-dragging={dragging || undefined}>
       <div className="file-header">
         <span className={`status status-${file.status}`}>{STATUS_LABEL[file.status]}</span>
         <h2>{file.oldPath ? `${file.oldPath} → ${file.path}` : file.path}</h2>
@@ -114,15 +149,9 @@ export default function FileDiffView(props: FileDiffViewProps) {
                   );
                   return (
                     <Fragment key={j}>
-                      <tr
-                        className={`line line-${l.type}${isSelected ? ' selected' : ''}`}
-                        onClick={(e) => {
-                          if (!key) return;
-                          selectRange(key, e.shiftKey);
-                        }}
-                      >
-                        <td className="ln">{l.oldLine ?? ''}</td>
-                        <td className="ln">{l.newLine ?? ''}</td>
+                      <tr className={`line line-${l.type}${isSelected ? ' selected' : ''}`}>
+                        <td className="ln" {...lnProps(key)}>{l.oldLine ?? ''}</td>
+                        <td className="ln" {...lnProps(key)}>{l.newLine ?? ''}</td>
                         <td className="code"><CodeCell text={l.text} filePath={file.path} /></td>
                       </tr>
                       {lineComments.length > 0 && (
@@ -165,25 +194,21 @@ export default function FileDiffView(props: FileDiffViewProps) {
                       <tr>
                         <td
                           className={`ln ${row.left ? `line-${row.left.type}` : ''}`}
-                          onClick={() => selectSingle(leftKey)}
                         >
                           {row.left?.oldLine ?? ''}
                         </td>
                         <td
                           className={`code ${row.left ? `line-${row.left.type}` : 'empty'}`}
-                          onClick={() => selectSingle(leftKey)}
                         >
                           {row.left ? <CodeCell text={row.left.text} filePath={file.path} /> : null}
                         </td>
                         <td
                           className={`ln ${row.right ? `line-${row.right.type}` : ''}`}
-                          onClick={() => selectSingle(rightKey)}
                         >
                           {row.right?.newLine ?? ''}
                         </td>
                         <td
                           className={`code ${row.right ? `line-${row.right.type}` : 'empty'}`}
-                          onClick={() => selectSingle(rightKey)}
                         >
                           {row.right ? <CodeCell text={row.right.text} filePath={file.path} /> : null}
                         </td>
