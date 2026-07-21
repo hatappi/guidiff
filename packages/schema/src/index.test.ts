@@ -66,6 +66,33 @@ describe('ReviewResultSchema', () => {
     };
     expect(() => ReviewResultSchema.parse(bad)).toThrow();
   });
+
+  test('accepts a file-level comment without side/startLine/endLine', () => {
+    const result: ReviewResult = {
+      version: 1,
+      verdict: 'approve',
+      comments: [{ file: 'src/app.ts', body: 'Consider splitting this file.' }],
+      reviewedSections: [],
+    };
+    expect(ReviewResultSchema.parse(result)).toEqual(result);
+  });
+
+  test('rejects a comment with only some line fields', () => {
+    const withStartOnly: ReviewResult = {
+      version: 1,
+      verdict: 'approve',
+      comments: [{ file: 'a', startLine: 3, body: 'x' } as any],
+      reviewedSections: [],
+    };
+    const withSideOnly: ReviewResult = {
+      version: 1,
+      verdict: 'approve',
+      comments: [{ file: 'a', side: 'new', body: 'x' } as any],
+      reviewedSections: [],
+    };
+    expect(() => ReviewResultSchema.parse(withStartOnly)).toThrow();
+    expect(() => ReviewResultSchema.parse(withSideOnly)).toThrow();
+  });
 });
 
 describe('StateFileSchema', () => {

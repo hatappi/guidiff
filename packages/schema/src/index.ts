@@ -31,12 +31,21 @@ export type Guide = z.infer<typeof GuideSchema>;
 export const ReviewCommentSchema = z
   .object({
     file: z.string().min(1),
-    side: z.enum(['new', 'old']),
-    startLine: z.number().int().positive(),
-    endLine: z.number().int().positive(),
+    side: z.enum(['new', 'old']).optional(),
+    startLine: z.number().int().positive().optional(),
+    endLine: z.number().int().positive().optional(),
     body: z.string().min(1),
   })
-  .refine((c) => c.endLine >= c.startLine, { message: 'endLine must be >= startLine' });
+  .refine(
+    (c) =>
+      (c.side !== undefined) === (c.startLine !== undefined)
+      && (c.startLine !== undefined) === (c.endLine !== undefined),
+    { message: 'side, startLine and endLine must be provided together or all omitted' },
+  )
+  .refine(
+    (c) => c.startLine === undefined || c.endLine === undefined || c.endLine >= c.startLine,
+    { message: 'endLine must be >= startLine' },
+  );
 export type ReviewComment = z.infer<typeof ReviewCommentSchema>;
 
 export const VerdictSchema = z.enum(['approve', 'request_changes']);
