@@ -7,7 +7,6 @@ export interface GuideSectionBlockProps {
   position: string;
   reviewed: boolean;
   files: Array<{ path: string; line?: number }>;
-  allViewed: boolean;
   onToggleSection: (id: string, reviewed: boolean) => void;
   onJump: (file: string, line?: number) => void;
 }
@@ -32,7 +31,6 @@ export default function GuideSectionBlock(props: GuideSectionBlockProps) {
         <span className={`importance-badge ${section.importance}`}>{IMPORTANCE_LABEL[section.importance]}</span>
       </div>
       <p className="guide-section-desc">{section.description}</p>
-      {props.allViewed && <span className="section-done">All files viewed</span>}
       <ul className="anchors">
         {props.files.map((f) => (
           <li key={`${f.path}:${f.line ?? ''}`}>

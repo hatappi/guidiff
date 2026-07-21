@@ -13,7 +13,7 @@ function renderBlock(overrides: Partial<Parameters<typeof GuideSectionBlock>[0]>
   return render(
     <GuideSectionBlock
       section={section} position="1 / 3" reviewed={false}
-      files={[{ path: 'src/auth.ts', line: 12 }]} allViewed={false}
+      files={[{ path: 'src/auth.ts', line: 12 }]}
       onToggleSection={noop} onJump={noop}
       {...overrides}
     />,
@@ -51,9 +51,4 @@ test('anchor without a line renders the bare path', () => {
   const { container } = renderBlock({ files: [{ path: 'src/auth.ts' }], onJump });
   fireEvent.click(within(container as HTMLElement).getByText('src/auth.ts'));
   expect(onJump).toHaveBeenCalledWith('src/auth.ts', undefined);
-});
-
-test('allViewed shows the done mark', () => {
-  const { container } = renderBlock({ allViewed: true });
-  expect(within(container as HTMLElement).getByText('All files viewed')).toBeTruthy();
 });

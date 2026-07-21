@@ -104,6 +104,83 @@ describe('App', () => {
     expect(container.querySelector('.overview-panel')).toBeNull();
   });
 
+  const mkFile = (path: string, viewed = false): ReviewPayload['files'][number] => ({
+    path, status: 'modified', binary: false,
+    hunks: [{ header: '@@ -1,1 +1,1 @@', lines: [{ type: 'add', newLine: 1, text: 'x' }] }],
+    patch: path,
+    state: { viewed, changedSinceLastView: false },
+  });
+
+  const syncPayload = (viewed: boolean, reviewedSections: string[]): ReviewPayload => ({
+    target: 'working tree',
+    guide: {
+      version: 1, title: 'G', summary: 'Sum.',
+      sections: [
+        { id: 'core', title: 'Core stuff', description: 'd', importance: 'core',
+          anchors: [{ file: 'src/a.ts', side: 'new' }, { file: 'src/b.ts', side: 'new' }] },
+      ],
+    },
+    files: [mkFile('src/a.ts', viewed), mkFile('src/b.ts', viewed)],
+    comments: [],
+    reviewedSections,
+  });
+
+  const sectionCheckbox = (container: HTMLElement) =>
+    within(container.querySelector('#guide-block-core') as HTMLElement).getByRole('checkbox') as HTMLInputElement;
+  const fileCheckbox = (path: string) =>
+    within(document.getElementById(`file-${path}`) as HTMLElement).getByLabelText('Viewed') as HTMLInputElement;
+
+  test('checking a section marks all of its files viewed', async () => {
+    payloadToServe = syncPayload(false, []);
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector('#section-core')).toBeTruthy());
+
+    fireEvent.click(sectionCheckbox(container as HTMLElement));
+    expect(fileCheckbox('src/a.ts').checked).toBe(true);
+    expect(fileCheckbox('src/b.ts').checked).toBe(true);
+    expect(screen.getByText('1 / 1 sections reviewed')).toBeTruthy();
+  });
+
+  test('unchecking a section marks all of its files unviewed', async () => {
+    payloadToServe = syncPayload(true, ['core']);
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector('#section-core')).toBeTruthy());
+
+    fireEvent.click(sectionCheckbox(container as HTMLElement));
+    expect(fileCheckbox('src/a.ts').checked).toBe(false);
+    expect(fileCheckbox('src/b.ts').checked).toBe(false);
+    expect(screen.getByText('0 / 1 sections reviewed')).toBeTruthy();
+  });
+
+  test('viewing the last unviewed file auto-checks its section', async () => {
+    payloadToServe = syncPayload(false, []);
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector('#section-core')).toBeTruthy());
+
+    fireEvent.click(fileCheckbox('src/a.ts'));
+    expect(sectionCheckbox(container as HTMLElement).checked).toBe(false);
+
+    fireEvent.click(fileCheckbox('src/b.ts'));
+    expect(sectionCheckbox(container as HTMLElement).checked).toBe(true);
+    expect(screen.getByText('1 / 1 sections reviewed')).toBeTruthy();
+  });
+
+  test('unviewing a file unchecks its reviewed section, and load alone never checks it', async () => {
+    // All files viewed from persisted state, but the section starts unreviewed:
+    // loading must not auto-check it.
+    payloadToServe = syncPayload(true, []);
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector('#section-core')).toBeTruthy());
+    expect(sectionCheckbox(container as HTMLElement).checked).toBe(false);
+
+    fireEvent.click(sectionCheckbox(container as HTMLElement));
+    expect(sectionCheckbox(container as HTMLElement).checked).toBe(true);
+
+    fireEvent.click(fileCheckbox('src/b.ts'));
+    expect(sectionCheckbox(container as HTMLElement).checked).toBe(false);
+    expect(fileCheckbox('src/a.ts').checked).toBe(true);
+  });
+
   test('clicking an anchor jumps to the file element', async () => {
     payloadToServe = guidedPayload;
     const { container } = render(<App />);

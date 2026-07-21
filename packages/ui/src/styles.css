@@ -125,7 +125,9 @@ button:disabled { cursor: default; opacity: 0.5; }
 .file-header {
   display: flex; align-items: center; gap: 8px; padding: 8px 12px;
   background: var(--bg-subtle); border-bottom: 1px solid var(--border);
-  position: sticky; top: var(--header-h); z-index: 5;
+  /* Overlap the app header by 1px so sub-pixel rounding of --header-h can
+     never open a see-through gap above the sticky file header. */
+  position: sticky; top: calc(var(--header-h) - 1px); z-index: 5;
 }
 .file-header h2 { font-size: 13px; font-family: monospace; margin: 0; flex: 1; }
 .status { font-size: 11px; padding: 1px 6px; border-radius: 10px; border: 1px solid var(--border); color: var(--fg-muted); }
@@ -164,7 +166,6 @@ button.primary:hover:not(:disabled) { background: var(--btn-primary-hover-bg); }
 .importance-badge { font-size: 10px; padding: 1px 6px; border-radius: 10px; border: 1px solid var(--border); color: var(--fg-muted); }
 .importance-badge.core { color: var(--core-accent); border-color: var(--core-accent); }
 .guide-section-desc { font-size: 12px; color: var(--fg-muted); margin: 6px 0; white-space: pre-line; }
-.section-done { font-size: 11px; color: var(--success); }
 .anchors { list-style: none; padding: 0; margin: 4px 0 0; }
 .anchor-link { background: none; border: none; border-radius: 0; color: var(--accent); font-size: 12px; font-family: monospace; cursor: pointer; padding: 2px 0; text-align: left; }
 button.anchor-link:hover { background: none; text-decoration: underline; }
