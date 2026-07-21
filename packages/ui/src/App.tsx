@@ -58,23 +58,50 @@ export default function App() {
     document.getElementById(`file-${file}`)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   };
 
+  // Section reviewed and file viewed are kept in sync in both directions, but
+  // only on user interaction — persisted viewed state never checks a section
+  // by itself, so reviewedSections keeps meaning "reviewed in this session".
   const toggleSection = (id: string, reviewed: boolean) => {
     api.setSectionReviewed(id, reviewed).catch(() => {});
+    const group = groups?.find((g) => g.section.id === id);
+    const paths = new Set(group?.files.map((f) => f.path));
+    for (const f of group?.files ?? []) {
+      if (f.state.viewed !== reviewed) api.setFileViewed(f.path, reviewed).catch(() => {});
+    }
     setPayload((p) => p && {
       ...p,
       reviewedSections: reviewed
         ? (p.reviewedSections.includes(id) ? p.reviewedSections : [...p.reviewedSections, id])
         : p.reviewedSections.filter((s) => s !== id),
+      files: p.files.map((f) =>
+        paths.has(f.path) && f.state.viewed !== reviewed
+          ? { ...f, state: { ...f.state, viewed: reviewed, changedSinceLastView: false } }
+          : f,
+      ),
     });
   };
 
   const toggleViewed = (path: string, viewed: boolean) => {
     api.setFileViewed(path, viewed).catch(() => {});
+    const group = groups?.find((g) => g.files.some((f) => f.path === path));
+    let sectionUpdate: { id: string; reviewed: boolean } | null = null;
+    if (group) {
+      const isReviewed = payload.reviewedSections.includes(group.section.id);
+      const allViewed = group.files.every((f) => (f.path === path ? viewed : f.state.viewed));
+      if (viewed && allViewed && !isReviewed) sectionUpdate = { id: group.section.id, reviewed: true };
+      else if (!viewed && isReviewed) sectionUpdate = { id: group.section.id, reviewed: false };
+    }
+    if (sectionUpdate) api.setSectionReviewed(sectionUpdate.id, sectionUpdate.reviewed).catch(() => {});
     setPayload((p) => p && {
       ...p,
       files: p.files.map((f) =>
         f.path === path ? { ...f, state: { ...f.state, viewed, changedSinceLastView: false } } : f,
       ),
+      reviewedSections: !sectionUpdate
+        ? p.reviewedSections
+        : sectionUpdate.reviewed
+          ? (p.reviewedSections.includes(sectionUpdate.id) ? p.reviewedSections : [...p.reviewedSections, sectionUpdate.id])
+          : p.reviewedSections.filter((s) => s !== sectionUpdate.id),
     });
   };
 
@@ -156,7 +183,6 @@ export default function App() {
                   path: f.path,
                   line: g.section.anchors.find((a) => a.file === f.path)?.lines?.[0],
                 }))}
-                allViewed={g.files.length > 0 && g.files.every((f) => f.state.viewed)}
                 onToggleSection={toggleSection}
                 onJump={jumpTo}
               />
