@@ -100,6 +100,8 @@ body { margin: 0; color: var(--fg); background: var(--bg-subtle); }
 .status-deleted { color: var(--danger); border-color: var(--danger); }
 .badge-changed { font-size: 11px; padding: 1px 6px; border-radius: 10px; background: var(--attention-bg); border: 1px solid var(--attention-border); }
 .viewed-toggle { font-size: 12px; display: flex; align-items: center; gap: 4px; color: var(--fg-muted); }
+.file-comments { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.comment-file-btn { font-size: 12px; }
 .hunk-header { font-family: monospace; font-size: 12px; color: var(--fg-muted); background: var(--hunk-header-bg); padding: 2px 12px; }
 .collapsed-note, .binary-note { padding: 12px; color: var(--fg-muted); font-size: 13px; }
 .progress { font-size: 12px; color: var(--fg-muted); }

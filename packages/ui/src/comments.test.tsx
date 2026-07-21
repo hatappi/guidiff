@@ -134,3 +134,22 @@ test('existing comments render with edit and delete', () => {
   fireEvent.click(screen.getByText('Delete'));
   expect(onDeleteComment).toHaveBeenCalledWith(1);
 });
+
+test('Comment on file button adds a file-level comment', () => {
+  const onAddComment = mock(noop);
+  render(<FileDiffView file={file} comments={[]} viewMode="unified"
+    onToggleViewed={noop} onAddComment={onAddComment} onUpdateComment={noop} onDeleteComment={noop} />);
+  fireEvent.click(screen.getByText('Comment on file'));
+  fireEvent.change(screen.getByPlaceholderText('Leave a comment'), { target: { value: 'overall note' } });
+  fireEvent.click(screen.getByText('Add comment'));
+  expect(onAddComment).toHaveBeenCalledWith({ file: 'src/a.ts', body: 'overall note' });
+});
+
+test('file-level comments render above the diff with a File label', () => {
+  render(<FileDiffView file={file}
+    comments={[{ id: 1, file: 'src/a.ts', body: 'file note' }]}
+    viewMode="unified"
+    onToggleViewed={noop} onAddComment={noop} onUpdateComment={noop} onDeleteComment={noop} />);
+  expect(screen.getByText('file note')).toBeTruthy();
+  expect(screen.getByText('File')).toBeTruthy();
+});

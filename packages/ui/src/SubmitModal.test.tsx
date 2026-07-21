@@ -44,3 +44,10 @@ test('cmd+enter in the overall comment textarea submits with the selected verdic
   fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
   expect(onSubmit).toHaveBeenCalledWith('approve', 'ship it');
 });
+
+test('file-level comment location shows only the file path', () => {
+  render(<SubmitModal
+    comments={[{ id: 2, file: 'src/b.ts', body: 'file note' }]}
+    onSubmit={noop} onClose={noop} />);
+  expect(screen.getByText('src/b.ts')).toBeTruthy();
+});

@@ -53,7 +53,9 @@ export default function SubmitModal(props: {
           <ul>
             {props.comments.map((c) => (
               <li key={c.id}>
-                <span className="comment-loc">{c.file}:{c.startLine}</span> {c.body}
+                <span className="comment-loc">
+                  {c.startLine === undefined ? c.file : `${c.file}:${c.startLine}`}
+                </span> {c.body}
               </li>
             ))}
           </ul>

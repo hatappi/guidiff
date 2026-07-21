@@ -36,7 +36,14 @@ export default function FileDiffView(props: FileDiffViewProps) {
   const [selection, setSelection] = useState<Selection>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [fileFormOpen, setFileFormOpen] = useState(false);
   const dragAnchor = useRef<LineKey | null>(null);
+  const fileComments = props.comments.filter((c) => c.startLine === undefined);
+
+  const submitFileComment = (body: string) => {
+    props.onAddComment({ file: file.path, body });
+    setFileFormOpen(false);
+  };
 
   useEffect(() => {
     if (!dragging) return;
@@ -114,6 +121,9 @@ export default function FileDiffView(props: FileDiffViewProps) {
             Changed since last view
           </span>
         )}
+        <button className="comment-file-btn" onClick={() => setFileFormOpen(true)}>
+          Comment on file
+        </button>
         <label className="viewed-toggle">
           <input
             type="checkbox"
@@ -124,6 +134,20 @@ export default function FileDiffView(props: FileDiffViewProps) {
           Viewed
         </label>
       </div>
+      {!file.state.viewed && (fileComments.length > 0 || fileFormOpen) && (
+        <div className="file-comments">
+          {fileComments.length > 0 && (
+            <CommentThread
+              comments={fileComments}
+              onUpdate={props.onUpdateComment}
+              onDelete={props.onDeleteComment}
+            />
+          )}
+          {fileFormOpen && (
+            <CommentForm onSubmit={submitFileComment} onCancel={() => setFileFormOpen(false)} />
+          )}
+        </div>
+      )}
       {file.binary ? (
         <div className="binary-note">Binary file not shown</div>
       ) : file.state.viewed ? (
