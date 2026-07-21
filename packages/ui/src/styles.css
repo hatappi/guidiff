@@ -110,7 +110,9 @@ button:disabled { cursor: default; opacity: 0.5; }
 .overview-panel .guide-summary { margin: 0; padding: 0 16px 12px; }
 .header h1 { font-size: 16px; margin: 0; }
 .target { color: var(--fg-muted); font-family: monospace; font-size: 13px; }
-.file { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; margin: 16px; overflow: hidden; scroll-margin-top: var(--header-h); }
+/* overflow: clip (not hidden) keeps the rounded-corner clipping without
+   creating a scroll container, which would break the sticky file header. */
+.file { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; margin: 16px; overflow: clip; scroll-margin-top: var(--header-h); }
 .file h2 { font-size: 13px; font-family: monospace; margin: 0; padding: 8px 12px; background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
 .hunk { width: 100%; border-collapse: collapse; font-family: ui-monospace, monospace; font-size: 12px; }
 .line-add { background: var(--add-bg); }
@@ -120,7 +122,11 @@ button:disabled { cursor: default; opacity: 0.5; }
 .line-del .ln { background: var(--del-ln-bg); }
 .code { padding: 0 8px; white-space: pre-wrap; word-break: break-all; }
 .loading, .error { padding: 32px; text-align: center; color: var(--fg-muted); }
-.file-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
+.file-header {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  background: var(--bg-subtle); border-bottom: 1px solid var(--border);
+  position: sticky; top: var(--header-h); z-index: 5;
+}
 .file-header h2 { font-size: 13px; font-family: monospace; margin: 0; flex: 1; }
 .status { font-size: 11px; padding: 1px 6px; border-radius: 10px; border: 1px solid var(--border); color: var(--fg-muted); }
 .status-added { color: var(--success); border-color: var(--success); }
