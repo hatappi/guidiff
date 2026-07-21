@@ -32,8 +32,10 @@ export default function App() {
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
+    // getBoundingClientRect keeps the fractional height; offsetHeight rounds,
+    // and rounding up opens a sub-pixel gap above the sticky file headers.
     const apply = () =>
-      document.documentElement.style.setProperty('--header-h', `${el.offsetHeight}px`);
+      document.documentElement.style.setProperty('--header-h', `${el.getBoundingClientRect().height}px`);
     apply();
     if (typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(apply);
