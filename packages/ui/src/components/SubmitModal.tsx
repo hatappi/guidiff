@@ -11,6 +11,15 @@ export default function SubmitModal(props: {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const n = props.comments.length;
+  const submit = () => {
+    if (submitting) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    Promise.resolve(props.onSubmit(verdict, overall.trim() || undefined)).catch((e) => {
+      setSubmitError(String(e));
+      setSubmitting(false);
+    });
+  };
   return (
     <div className="modal-backdrop" onClick={props.onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -31,6 +40,12 @@ export default function SubmitModal(props: {
           placeholder="Overall comment (optional)"
           value={overall}
           onChange={(e) => setOverall(e.target.value)}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+              e.preventDefault();
+              submit();
+            }
+          }}
           rows={3}
         />
         <div className="modal-comments">
@@ -48,18 +63,7 @@ export default function SubmitModal(props: {
         )}
         <div className="modal-actions">
           <button onClick={props.onClose} disabled={submitting}>Back</button>
-          <button
-            className="primary"
-            disabled={submitting}
-            onClick={() => {
-              setSubmitting(true);
-              setSubmitError(null);
-              Promise.resolve(props.onSubmit(verdict, overall.trim() || undefined)).catch((e) => {
-                setSubmitError(String(e));
-                setSubmitting(false);
-              });
-            }}
-          >
+          <button className="primary" disabled={submitting} onClick={submit}>
             {submitting ? 'Submitting…' : 'Submit review'}
           </button>
         </div>
