@@ -80,6 +80,36 @@ describe('review api', () => {
     }
   });
 
+  test('file-level comment round-trips through post and submit without line fields', async () => {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const { url, outcome } = boot(gitDir);
+
+    const postRes = await fetch(`${url}/api/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ file: 'src/a.ts', body: 'file-level note' }),
+    });
+    expect(postRes.status).toBe(201);
+    const created = await postRes.json();
+    expect(created).toEqual({ id: created.id, file: 'src/a.ts', body: 'file-level note' });
+    expect(created).not.toHaveProperty('side');
+    expect(created).not.toHaveProperty('startLine');
+    expect(created).not.toHaveProperty('endLine');
+
+    const submitRes = await fetch(`${url}/api/submit`, {
+      method: 'POST',
+      body: JSON.stringify({ verdict: 'approve' }),
+    });
+    expect(submitRes.status).toBe(200);
+
+    const out = await outcome;
+    expect(out.type).toBe('submit');
+    if (out.type === 'submit') {
+      expect(out.result.comments).toEqual([
+        { file: 'src/a.ts', body: 'file-level note' },
+      ]);
+    }
+  });
+
   test('PUT /api/files/viewed persists state to gitDir', async () => {
     const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
     const { url } = boot(gitDir);

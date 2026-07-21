@@ -35,3 +35,19 @@ test('failed submit shows error, re-enables, and keeps the modal open', async ()
   const button = screen.getByText('Submit review') as HTMLButtonElement;
   expect(button.disabled).toBe(false);
 });
+
+test('cmd+enter in the overall comment textarea submits with the selected verdict', () => {
+  const onSubmit = mock(noop);
+  render(<SubmitModal comments={[]} onSubmit={onSubmit} onClose={noop} />);
+  const textarea = screen.getByPlaceholderText('Overall comment (optional)');
+  fireEvent.change(textarea, { target: { value: 'ship it' } });
+  fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+  expect(onSubmit).toHaveBeenCalledWith('approve', 'ship it');
+});
+
+test('file-level comment location shows only the file path', () => {
+  render(<SubmitModal
+    comments={[{ id: 2, file: 'src/b.ts', body: 'file note' }]}
+    onSubmit={noop} onClose={noop} />);
+  expect(screen.getByText('src/b.ts')).toBeTruthy();
+});

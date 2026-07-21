@@ -110,6 +110,8 @@ When the background task exits, read its output:
     (fix / explain / discuss) and ask the user to confirm before editing code. Some
     comments are questions, not change requests. After applying agreed fixes, offer
     to re-run the review.
+  - Comments without `side`/`startLine`/`endLine` are file-level: they apply to the
+    whole file rather than a specific line range.
 - **exit 2**: the review was cancelled. Say so and stop; do not act on the diff.
 - **exit 1**: read stderr, fix the problem (e.g. regenerate an invalid guide) and retry once.
 

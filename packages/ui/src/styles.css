@@ -100,14 +100,19 @@ body { margin: 0; color: var(--fg); background: var(--bg-subtle); }
 .status-deleted { color: var(--danger); border-color: var(--danger); }
 .badge-changed { font-size: 11px; padding: 1px 6px; border-radius: 10px; background: var(--attention-bg); border: 1px solid var(--attention-border); }
 .viewed-toggle { font-size: 12px; display: flex; align-items: center; gap: 4px; color: var(--fg-muted); }
+.file-comments { padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.comment-file-btn { font-size: 12px; }
 .hunk-header { font-family: monospace; font-size: 12px; color: var(--fg-muted); background: var(--hunk-header-bg); padding: 2px 12px; }
 .collapsed-note, .binary-note { padding: 12px; color: var(--fg-muted); font-size: 13px; }
 .progress { font-size: 12px; color: var(--fg-muted); }
 .view-toggle { margin-left: auto; font-size: 12px; }
 .theme-toggle { font-size: 14px; background: none; border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; cursor: pointer; }
 .code .empty { background: var(--bg-subtle); }
-.line { cursor: pointer; }
-.line.selected .code { background: var(--attention-bg); }
+td.ln { cursor: pointer; }
+td.ln:hover { background: var(--attention-bg); }
+.line.selected .ln, .line.selected .code { background: var(--attention-bg); }
+.file[data-dragging] { user-select: none; }
+.hunk-split td.selected { background: var(--attention-bg); }
 .inline-row td { padding: 8px 12px; background: var(--bg); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .comment { border: 1px solid var(--border); border-radius: 6px; padding: 8px; margin: 4px 0; background: var(--bg); }
 .comment-range { font-size: 11px; color: var(--fg-muted); }

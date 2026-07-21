@@ -21,7 +21,11 @@ export default function CommentThread(props: {
         ) : (
           <div key={c.id} className="comment">
             <div className="comment-range">
-              {c.startLine === c.endLine ? `Line ${c.startLine}` : `Lines ${c.startLine}–${c.endLine}`}
+              {c.startLine === undefined
+                ? 'File'
+                : c.startLine === c.endLine
+                  ? `Line ${c.startLine}`
+                  : `Lines ${c.startLine}–${c.endLine}`}
             </div>
             <div className="comment-body">{c.body}</div>
             <div className="comment-actions">
