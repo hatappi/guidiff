@@ -84,6 +84,46 @@ test('split view: mousedown+mouseup on the left column line number comments the 
   });
 });
 
+const splitDragFile = {
+  path: 'src/c.ts', status: 'modified' as const, binary: false,
+  hunks: [{ header: '@@ -3,2 +5,2 @@', lines: [
+    { type: 'del' as const, oldLine: 3, text: 'old three' },
+    { type: 'del' as const, oldLine: 4, text: 'old four' },
+    { type: 'add' as const, newLine: 5, text: 'new five' },
+    { type: 'add' as const, newLine: 6, text: 'new six' },
+  ] }],
+  patch: 'x',
+  state: { viewed: false, changedSinceLastView: false },
+};
+
+test('split view: dragging down the right column selects a range on the new side', () => {
+  const onAddComment = mock(noop);
+  render(<FileDiffView file={splitDragFile} comments={[]} viewMode="split"
+    onToggleViewed={noop} onAddComment={onAddComment} onUpdateComment={noop} onDeleteComment={noop} />);
+  fireEvent.mouseDown(screen.getByText('5'));
+  fireEvent.mouseEnter(screen.getByText('6'));
+  fireEvent.mouseUp(document);
+  fireEvent.change(screen.getByPlaceholderText('Leave a comment'), { target: { value: 'both lines' } });
+  fireEvent.click(screen.getByText('Add comment'));
+  expect(onAddComment).toHaveBeenCalledWith({
+    file: 'src/c.ts', side: 'new', startLine: 5, endLine: 6, body: 'both lines',
+  });
+});
+
+test('split view: dragging across sides does not extend the selection', () => {
+  const onAddComment = mock(noop);
+  render(<FileDiffView file={splitDragFile} comments={[]} viewMode="split"
+    onToggleViewed={noop} onAddComment={onAddComment} onUpdateComment={noop} onDeleteComment={noop} />);
+  fireEvent.mouseDown(screen.getByText('3'));
+  fireEvent.mouseEnter(screen.getByText('6'));
+  fireEvent.mouseUp(document);
+  fireEvent.change(screen.getByPlaceholderText('Leave a comment'), { target: { value: 'old only' } });
+  fireEvent.click(screen.getByText('Add comment'));
+  expect(onAddComment).toHaveBeenCalledWith({
+    file: 'src/c.ts', side: 'old', startLine: 3, endLine: 3, body: 'old only',
+  });
+});
+
 test('existing comments render with edit and delete', () => {
   const onDeleteComment = mock(noop);
   render(<FileDiffView file={file}

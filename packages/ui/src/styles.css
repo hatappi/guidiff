@@ -110,6 +110,7 @@ td.ln { cursor: pointer; }
 td.ln:hover { background: var(--attention-bg); }
 .line.selected .ln, .line.selected .code { background: var(--attention-bg); }
 .file[data-dragging] { user-select: none; }
+.hunk-split td.selected { background: var(--attention-bg); }
 .inline-row td { padding: 8px 12px; background: var(--bg); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .comment { border: 1px solid var(--border); border-radius: 6px; padding: 8px; margin: 4px 0; background: var(--bg); }
 .comment-range { font-size: 11px; color: var(--fg-muted); }

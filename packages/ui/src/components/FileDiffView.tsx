@@ -177,39 +177,41 @@ export default function FileDiffView(props: FileDiffViewProps) {
                 {buildSplitRows(hunk).map((row, j) => {
                   const leftKey: LineKey | null = row.left ? lineKey(row.left) : null;
                   const rightKey: LineKey | null = row.right ? lineKey(row.right) : null;
+                  const inSelection = (key: LineKey | null) => !!(
+                    selection && key && key.side === selection.side
+                    && key.line >= selection.start && key.line <= selection.end
+                  );
+                  const leftSelected = inSelection(leftKey);
+                  const rightSelected = inSelection(rightKey);
                   const rowComments = props.comments.filter(
                     (c) => (leftKey && c.side === leftKey.side && c.endLine === leftKey.line)
                       || (rightKey && c.side === rightKey.side && c.endLine === rightKey.line),
                   );
                   const showForm = !!(
                     formOpen && selection && (
-                      (leftKey && selection.side === leftKey.side
-                        && selection.start === leftKey.line && selection.end === leftKey.line)
-                      || (rightKey && selection.side === rightKey.side
-                        && selection.start === rightKey.line && selection.end === rightKey.line)
+                      (leftKey && selection.side === leftKey.side && selection.end === leftKey.line)
+                      || (rightKey && selection.side === rightKey.side && selection.end === rightKey.line)
                     )
                   );
                   return (
                     <Fragment key={j}>
                       <tr>
                         <td
-                          className={`ln ${row.left ? `line-${row.left.type}` : ''}`}
+                          className={`ln ${row.left ? `line-${row.left.type}` : ''}${leftSelected ? ' selected' : ''}`}
+                          {...lnProps(leftKey)}
                         >
                           {row.left?.oldLine ?? ''}
                         </td>
-                        <td
-                          className={`code ${row.left ? `line-${row.left.type}` : 'empty'}`}
-                        >
+                        <td className={`code ${row.left ? `line-${row.left.type}` : 'empty'}${leftSelected ? ' selected' : ''}`}>
                           {row.left ? <CodeCell text={row.left.text} filePath={file.path} /> : null}
                         </td>
                         <td
-                          className={`ln ${row.right ? `line-${row.right.type}` : ''}`}
+                          className={`ln ${row.right ? `line-${row.right.type}` : ''}${rightSelected ? ' selected' : ''}`}
+                          {...lnProps(rightKey)}
                         >
                           {row.right?.newLine ?? ''}
                         </td>
-                        <td
-                          className={`code ${row.right ? `line-${row.right.type}` : 'empty'}`}
-                        >
+                        <td className={`code ${row.right ? `line-${row.right.type}` : 'empty'}${rightSelected ? ' selected' : ''}`}>
                           {row.right ? <CodeCell text={row.right.text} filePath={file.path} /> : null}
                         </td>
                       </tr>
