@@ -32,6 +32,10 @@ Bun workspace monorepo, three packages with one direction of dependency: `cli` �
 
 - **`skills/guidiff-review`** — the Claude Code plugin skill shipped from this repo (installed via `/plugin marketplace add hatappi/guidiff`). It documents the guide JSON format and CLI contract for AI sessions; update it when CLI flags, exit codes, or schemas change.
 
+## Verifying changes (dogfooding)
+
+After implementing a change, verify it by dogfooding: build the binary from the current branch (`bun run build:binary`) and run the guidiff-review skill flow using `./guidiff` — NOT any globally installed guidiff — against the branch diff, so the reviewer sees the change running in the real UI built from this very branch.
+
 ## Conventions
 
 - **stdout is sacred in the CLI**: the only stdout write is the final result JSON on submit. Everything else (logs, usage, errors) goes to stderr. Exit codes: 0 submitted, 1 error, 2 cancelled/timeout — the skill and calling sessions depend on this.
