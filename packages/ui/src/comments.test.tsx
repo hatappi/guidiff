@@ -163,3 +163,11 @@ test('viewed file hides the Comment on file button and file comments', () => {
   expect(screen.queryByText('Comment on file')).toBeNull();
   expect(screen.queryByText('file note')).toBeNull();
 });
+
+test('right-clicking a line number does not start a selection', () => {
+  render(<FileDiffView file={file} comments={[]} viewMode="unified"
+    onToggleViewed={noop} onAddComment={noop} onUpdateComment={noop} onDeleteComment={noop} />);
+  fireEvent.mouseDown(screen.getByText('1'), { button: 2 });
+  fireEvent.mouseUp(document);
+  expect(screen.queryByPlaceholderText('Leave a comment')).toBeNull();
+});

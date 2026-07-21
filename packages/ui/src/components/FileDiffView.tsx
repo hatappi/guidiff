@@ -86,6 +86,7 @@ export default function FileDiffView(props: FileDiffViewProps) {
 
   const lnProps = (key: LineKey | null) => ({
     onMouseDown: (e: MouseEvent<HTMLTableCellElement>) => {
+      if (e.button !== 0) return;
       e.preventDefault();
       beginSelect(key, e.shiftKey);
     },
