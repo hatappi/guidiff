@@ -1,5 +1,7 @@
 {
   "name": "guidiff",
+  "version": "0.2.2",
+  "license": "MIT",
   "private": true,
   "workspaces": ["packages/*"],
   "scripts": {
