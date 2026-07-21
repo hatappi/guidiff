@@ -5,7 +5,7 @@ import GuideSectionBlock from './components/GuideSectionBlock.tsx';
 
 const section: GuideSection = {
   id: 'core', title: 'Core middleware', description: 'Heart of the change.', importance: 'core',
-  anchors: [{ file: 'src/auth.ts', side: 'new', lines: [12] }],
+  anchors: [{ file: 'src/auth.ts', side: 'new', lines: [12, 20] }],
 };
 const noop = () => {};
 
