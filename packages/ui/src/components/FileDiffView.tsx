@@ -121,9 +121,11 @@ export default function FileDiffView(props: FileDiffViewProps) {
             Changed since last view
           </span>
         )}
-        <button className="comment-file-btn" onClick={() => setFileFormOpen(true)}>
-          Comment on file
-        </button>
+        {!file.state.viewed && (
+          <button className="comment-file-btn" onClick={() => setFileFormOpen(true)}>
+            Comment on file
+          </button>
+        )}
         <label className="viewed-toggle">
           <input
             type="checkbox"

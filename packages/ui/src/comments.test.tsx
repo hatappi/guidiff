@@ -153,3 +153,13 @@ test('file-level comments render above the diff with a File label', () => {
   expect(screen.getByText('file note')).toBeTruthy();
   expect(screen.getByText('File')).toBeTruthy();
 });
+
+test('viewed file hides the Comment on file button and file comments', () => {
+  const viewedFile = { ...file, state: { viewed: true, changedSinceLastView: false } };
+  render(<FileDiffView file={viewedFile}
+    comments={[{ id: 1, file: 'src/a.ts', body: 'file note' }]}
+    viewMode="unified"
+    onToggleViewed={noop} onAddComment={noop} onUpdateComment={noop} onDeleteComment={noop} />);
+  expect(screen.queryByText('Comment on file')).toBeNull();
+  expect(screen.queryByText('file note')).toBeNull();
+});
