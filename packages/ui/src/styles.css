@@ -1,4 +1,5 @@
 :root {
+  --header-h: 49px;
   --border: #d1d9e0;
   --bg: #ffffff;
   --bg-subtle: #f6f8fa;
@@ -69,14 +70,20 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; color: var(--fg); background: var(--bg-subtle); }
+.app-header { position: sticky; top: 0; z-index: 10; }
 .header {
   display: flex; align-items: center; gap: 12px;
   padding: 8px 16px; background: var(--bg); border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; z-index: 10;
 }
+.overview-panel {
+  padding: 12px 16px; background: var(--bg); border-bottom: 1px solid var(--border);
+  max-height: 40vh; overflow-y: auto;
+}
+.overview-panel h2 { font-size: 15px; margin: 0 0 4px; }
+.overview-toggle { font-size: 12px; }
 .header h1 { font-size: 16px; margin: 0; }
 .target { color: var(--fg-muted); font-family: monospace; font-size: 13px; }
-.file { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; margin: 16px; overflow: hidden; }
+.file { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; margin: 16px; overflow: hidden; scroll-margin-top: var(--header-h); }
 .file h2 { font-size: 13px; font-family: monospace; margin: 0; padding: 8px 12px; background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
 .hunk { width: 100%; border-collapse: collapse; font-family: ui-monospace, monospace; font-size: 12px; }
 .line-add { background: var(--add-bg); }
@@ -111,7 +118,7 @@ body { margin: 0; color: var(--fg); background: var(--bg-subtle); }
 button.primary { background: var(--btn-primary-bg); color: white; border: none; border-radius: 6px; padding: 4px 10px; }
 button.primary:disabled { opacity: 0.5; }
 .layout { display: grid; grid-template-columns: 320px 1fr; gap: 0; align-items: start; }
-.guide-pane { position: sticky; top: 49px; height: calc(100vh - 49px); overflow-y: auto; padding: 16px; background: var(--bg); border-right: 1px solid var(--border); }
+.guide-pane { position: sticky; top: var(--header-h); height: calc(100vh - var(--header-h)); overflow-y: auto; padding: 16px; background: var(--bg); border-right: 1px solid var(--border); }
 .guide-pane h2 { font-size: 15px; margin: 0 0 8px; }
 .guide-summary { font-size: 13px; color: var(--fg-muted); }
 .guide-section-header { display: flex; align-items: center; gap: 6px; }
@@ -122,15 +129,6 @@ button.primary:disabled { opacity: 0.5; }
 .section-done { font-size: 11px; color: var(--success); }
 .anchors { list-style: none; padding: 0; margin: 4px 0 0; }
 .anchor-link { background: none; border: none; color: var(--accent); font-size: 12px; font-family: monospace; cursor: pointer; padding: 2px 0; text-align: left; }
-.guide-pane--sections { padding: 0; display: flex; flex-direction: column; }
-.guide-pane-header { padding: 12px 16px; border-bottom: 1px solid var(--border); }
-.guide-pane-header h2 { font-size: 15px; margin: 0 0 4px; }
-.guide-viewport { flex: 1; overflow: hidden; position: relative; }
-.guide-track { height: 100%; will-change: transform; }
-.guide-card { height: 100%; overflow-y: auto; box-sizing: border-box; padding: 16px; }
-.guide-card-meta { font-size: 11px; color: var(--fg-muted); margin-bottom: 8px; }
-.section-group-header { position: sticky; top: 49px; z-index: 5; display: flex; align-items: center; gap: 8px; margin: 16px 16px 0; padding: 8px 12px; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 6px; }
-.section-group-header h2 { font-size: 14px; margin: 0; flex: 1; }
 .anchor-link:hover { text-decoration: underline; }
 .file-list { list-style: none; padding: 0; }
 .modal-backdrop { position: fixed; inset: 0; background: var(--backdrop); display: flex; align-items: center; justify-content: center; z-index: 100; }
@@ -144,4 +142,10 @@ button.primary:disabled { opacity: 0.5; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .submit-error { font-size: 13px; color: var(--danger); margin-bottom: 8px; }
 .done { padding: 64px; text-align: center; font-size: 16px; }
-.section-group { min-height: calc(100vh - 49px); box-sizing: border-box; }
+.section-row { display: grid; grid-template-columns: 320px 1fr; align-items: start; }
+.guide-block {
+  position: sticky; top: var(--header-h);
+  max-height: calc(100vh - var(--header-h)); overflow-y: auto;
+  padding: 16px;
+}
+.guide-block-meta { font-size: 11px; color: var(--fg-muted); margin-bottom: 8px; }
