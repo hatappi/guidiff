@@ -64,7 +64,7 @@ Guide JSON schema (validated by guidiff with zod):
   "sections": [            // ordered: recommended reading order
     {
       "id": "kebab-case-id",
-      "title": "Core: the heart of the change",
+      "title": "The heart of the change",
       "description": "Purpose, impact, and why it was implemented this way",
       "importance": "core",              // "core" | "supporting" | "low-signal"
       "anchors": [                        // direct links into the diff
@@ -80,6 +80,9 @@ Guide-writing principles:
 - Put the conceptual core first, wiring and call sites second, generated/low-signal
   churn (lockfiles, snapshots) last as `low-signal`.
 - Descriptions explain intent and impact, not what the code literally says.
+- Titles state what the section is about, nothing more. Never prefix them with the
+  importance level (no "Core:", "Low-signal:", etc.) — the UI already renders
+  `importance` as an icon next to the title.
 - Anchor every section to the exact files/lines that prove it.
 - Build sections by GROUPING the changed files: every changed file belongs to
   exactly ONE section. Never anchor the same file from two sections — when a
