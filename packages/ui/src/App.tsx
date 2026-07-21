@@ -117,15 +117,6 @@ export default function App() {
               ? `${payload.reviewedSections.filter((id) => groups.some((g) => g.section.id === id)).length} / ${groups.length} sections reviewed`
               : `${viewedCount} / ${payload.files.length} files viewed`}
           </span>
-          {payload.guide && (
-            <button
-              className="overview-toggle"
-              aria-expanded={overviewOpen}
-              onClick={() => setOverviewOpen((o) => !o)}
-            >
-              {overviewOpen ? 'Overview ▴' : 'Overview ▾'}
-            </button>
-          )}
           <button className="theme-toggle" aria-label="Toggle theme" onClick={toggleTheme}>
             {theme === 'light' ? '🌙' : '☀️'}
           </button>
@@ -135,10 +126,21 @@ export default function App() {
           <button className="primary" onClick={() => setModalOpen(true)}>Submit</button>
           <button onClick={() => { api.cancelReview().finally(() => setFinished('cancel')); }}>Cancel</button>
         </header>
-        {payload.guide && overviewOpen && (
+        {payload.guide && (
           <section className="overview-panel">
-            <h2>{payload.guide.title}</h2>
-            <p className="guide-summary">{payload.guide.summary}</p>
+            <h2 className="overview-heading">
+              <button
+                className="overview-heading-toggle"
+                aria-expanded={overviewOpen}
+                onClick={() => setOverviewOpen((o) => !o)}
+              >
+                <span className="overview-chevron" aria-hidden="true">
+                  {overviewOpen ? '▾' : '▸'}
+                </span>
+                {payload.guide.title}
+              </button>
+            </h2>
+            {overviewOpen && <p className="guide-summary">{payload.guide.summary}</p>}
           </section>
         )}
       </div>

@@ -78,24 +78,30 @@ describe('App', () => {
     expect(within(other).getAllByText('src/extra.ts').length).toBeGreaterThan(0);
   });
 
-  test('overview panel starts open and the navbar button toggles it', async () => {
+  test('overview panel starts open and clicking its title row toggles it', async () => {
     payloadToServe = guidedPayload;
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector('.overview-panel')).toBeTruthy());
     expect(within(container.querySelector('.overview-panel') as HTMLElement).getByText('Sum.')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: /Overview/ }));
-    expect(container.querySelector('.overview-panel')).toBeNull();
+    const toggle = screen.getByRole('button', { name: 'G' });
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
 
-    fireEvent.click(screen.getByRole('button', { name: /Overview/ }));
+    fireEvent.click(toggle);
+    expect(screen.queryByText('Sum.')).toBeNull();
+    // タイトル行は残る
     expect(container.querySelector('.overview-panel')).toBeTruthy();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+
+    fireEvent.click(toggle);
+    expect(screen.getByText('Sum.')).toBeTruthy();
   });
 
-  test('without a guide there is no overview toggle button', async () => {
+  test('without a guide the overview panel is not rendered', async () => {
     payloadToServe = payload;
-    render(<App />);
+    const { container } = render(<App />);
     await waitFor(() => expect(screen.getByText('working tree')).toBeTruthy());
-    expect(screen.queryByRole('button', { name: /Overview/ })).toBeNull();
+    expect(container.querySelector('.overview-panel')).toBeNull();
   });
 
   test('clicking an anchor jumps to the file element', async () => {
