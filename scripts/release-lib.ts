@@ -54,3 +54,43 @@ export function mainManifest(version: string): Record<string, unknown> {
     optionalDependencies,
   };
 }
+
+export function launcherSource(): string {
+  const map: Record<string, string> = {};
+  for (const t of TARGETS) {
+    map[`${t.os}-${t.cpu}`] = t.npmName;
+  }
+  return `#!/usr/bin/env node
+'use strict';
+const { spawnSync } = require('node:child_process');
+
+const PACKAGES = ${JSON.stringify(map, null, 2)};
+
+const key = process.platform + '-' + process.arch;
+const pkg = PACKAGES[key];
+if (!pkg) {
+  console.error('guidiff: unsupported platform: ' + key);
+  console.error('Supported platforms: ' + Object.keys(PACKAGES).join(', '));
+  process.exit(1);
+}
+
+let bin;
+try {
+  bin = require.resolve(pkg + '/bin/guidiff');
+} catch {
+  console.error('guidiff: binary package ' + pkg + ' is not installed.');
+  console.error('Reinstall guidiff without disabling optional dependencies.');
+  process.exit(1);
+}
+
+const result = spawnSync(bin, process.argv.slice(2), { stdio: 'inherit' });
+if (result.error) {
+  console.error('guidiff: failed to run binary: ' + result.error.message);
+  process.exit(1);
+}
+if (result.signal) {
+  process.kill(process.pid, result.signal);
+}
+process.exit(result.status === null ? 1 : result.status);
+`;
+}
