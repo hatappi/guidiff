@@ -17,12 +17,20 @@ returns your review straight to the AI session that launched it.
 ## Install
 
 ```bash
+npm install -g guidiff   # or: npx guidiff / bunx guidiff
+```
+
+Prebuilt binaries for macOS (arm64/x64) and Linux (x64/arm64). No Bun required.
+
+Or build from source:
+
+```bash
 git clone https://github.com/hatappi/guidiff && cd guidiff
 bun install && bun run build:binary
 mv guidiff ~/.local/bin/   # or anywhere on your PATH
 ```
 
-npm / Homebrew packages are planned.
+A Homebrew package is planned.
 
 ## Usage
 
@@ -55,3 +63,9 @@ bun test packages/schema packages/cli && bun test --cwd packages/ui
 bun packages/cli/src/index.ts . --no-open   # run from source
 bun run build:binary                         # single binary ./guidiff
 ```
+
+## Release (maintainers)
+
+1. Bump `version` in the root `package.json` and commit.
+2. `npm login` (once) — publishing needs the npmjs.com `guidiff` org.
+3. `bun run release --dry-run` to inspect the packages, then `bun run release`.
