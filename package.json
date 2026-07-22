@@ -5,7 +5,7 @@
   "private": true,
   "workspaces": ["packages/*"],
   "scripts": {
-    "test": "bun test packages/schema packages/cli && bun test --cwd packages/ui",
+    "test": "bun test packages/schema packages/cli scripts && bun test --cwd packages/ui",
     "typecheck": "tsc --noEmit",
     "build:binary": "bun build --compile --minify packages/cli/src/index.ts --outfile guidiff"
   },
