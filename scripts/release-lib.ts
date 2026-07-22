@@ -89,6 +89,9 @@ if (result.error) {
   process.exit(1);
 }
 if (result.signal) {
+  // Re-raise the child's fatal signal so callers see 128+n. On the POSIX
+  // platforms we ship, the self-directed signal is delivered before
+  // process.kill returns, so the exit below is never reached in this case.
   process.kill(process.pid, result.signal);
 }
 process.exit(result.status === null ? 1 : result.status);
