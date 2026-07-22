@@ -7,7 +7,8 @@
   "scripts": {
     "test": "bun test packages/schema packages/cli scripts && bun test --cwd packages/ui",
     "typecheck": "tsc --noEmit",
-    "build:binary": "bun build --compile --minify packages/cli/src/index.ts --outfile guidiff"
+    "build:binary": "bun build --compile --minify packages/cli/src/index.ts --outfile guidiff",
+    "release": "bun scripts/release.ts"
   },
   "devDependencies": {
     "typescript": "^5.8.0",
