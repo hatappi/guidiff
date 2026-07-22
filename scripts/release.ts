@@ -17,7 +17,11 @@ function run(cmd: string[], cwd?: string): number {
 }
 
 if (!dryRun) {
-  const status = Bun.spawnSync(['git', 'status', '--porcelain'], { cwd: repoRoot });
+  // Untracked files (e.g. local planning docs) cannot affect the build; only
+  // uncommitted changes to tracked files make a release unreproducible.
+  const status = Bun.spawnSync(['git', 'status', '--porcelain', '--untracked-files=no'], {
+    cwd: repoRoot,
+  });
   if (status.stdout.toString().trim() !== '') {
     log('release: working tree is not clean — commit changes first');
     process.exit(1);
