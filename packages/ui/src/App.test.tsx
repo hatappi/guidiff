@@ -181,6 +181,17 @@ describe('App', () => {
     expect(fileCheckbox('src/a.ts').checked).toBe(true);
   });
 
+  test('cancelling shows the done screen with an auto-close countdown', async () => {
+    payloadToServe = payload;
+    window.close = mock(() => {});
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('working tree')).toBeTruthy());
+
+    fireEvent.click(screen.getByText('Cancel'));
+    await waitFor(() => expect(screen.getByText(/Review cancelled/)).toBeTruthy());
+    expect(screen.getByText('Closing in 10s…')).toBeTruthy();
+  });
+
   test('clicking an anchor jumps to the file element', async () => {
     payloadToServe = guidedPayload;
     const { container } = render(<App />);
