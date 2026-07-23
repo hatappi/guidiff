@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReviewComment, ReviewPayload } from '@guidiff/schema';
 import * as api from './api.ts';
+import DoneScreen from './components/DoneScreen.tsx';
 import FileDiffView from './components/FileDiffView.tsx';
 import GuideSectionBlock from './components/GuideSectionBlock.tsx';
 import SubmitModal from './components/SubmitModal.tsx';
@@ -45,13 +46,11 @@ export default function App() {
 
   if (finished === 'submit') {
     return (
-      <div className="done">
-        ✅ Review submitted — the result has been returned to your session. You can close this tab.
-      </div>
+      <DoneScreen message="✅ Review submitted — the result has been returned to your session. You can close this tab." />
     );
   }
   if (finished === 'cancel') {
-    return <div className="done">Review cancelled. You can close this tab.</div>;
+    return <DoneScreen message="Review cancelled. You can close this tab." />;
   }
   if (error) return <div className="error">Failed to load review: {error}</div>;
   if (!payload) return <div className="loading">Loading…</div>;
