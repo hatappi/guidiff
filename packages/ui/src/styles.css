@@ -138,6 +138,19 @@ button:disabled { cursor: default; opacity: 0.5; }
 .viewed-toggle { font-size: 14px; display: flex; align-items: center; gap: 4px; color: var(--fg-muted); }
 .file-comments { padding: 8px 12px; border-bottom: 1px solid var(--border); }
 .comment-file-btn { font-size: 14px; }
+/* Anchored to the sticky file header so the form stays on screen no matter
+   how far the file is scrolled. */
+.file-comment-popover {
+  position: absolute; top: 100%; right: 8px; margin-top: 6px;
+  width: min(440px, calc(100vw - 32px));
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px; box-shadow: 0 8px 24px var(--backdrop);
+}
+/* Paint above the next file's sticky header while the popover is open. */
+.file-header:has(.file-comment-popover) { z-index: 6; }
+/* Let the popover escape the file box on short diffs; the rounded-corner
+   clipping is only relaxed while the form is open. */
+.file:has(.file-comment-popover) { overflow: visible; }
 .hunk-header { font-family: monospace; font-size: 14px; color: var(--fg-muted); background: var(--hunk-header-bg); padding: 2px 12px; }
 .collapsed-note, .binary-note { padding: 12px; color: var(--fg-muted); font-size: 14px; }
 .progress { font-size: 14px; color: var(--fg-muted); }

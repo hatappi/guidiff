@@ -145,6 +145,24 @@ test('Comment on file button adds a file-level comment', () => {
   expect(onAddComment).toHaveBeenCalledWith({ file: 'src/a.ts', body: 'overall note' });
 });
 
+test('Comment on file form opens as a popover inside the sticky file header', () => {
+  render(<FileDiffView file={file} comments={[]} viewMode="unified"
+    onToggleViewed={noop} onAddComment={noop} onUpdateComment={noop} onDeleteComment={noop} />);
+  fireEvent.click(screen.getByText('Comment on file'));
+  const textarea = screen.getByPlaceholderText('Leave a comment');
+  const popover = textarea.closest('.file-comment-popover');
+  expect(popover).not.toBeNull();
+  expect(popover?.closest('.file-header')).not.toBeNull();
+});
+
+test('cancelling the file comment popover closes it', () => {
+  render(<FileDiffView file={file} comments={[]} viewMode="unified"
+    onToggleViewed={noop} onAddComment={noop} onUpdateComment={noop} onDeleteComment={noop} />);
+  fireEvent.click(screen.getByText('Comment on file'));
+  fireEvent.click(screen.getByText('Cancel'));
+  expect(screen.queryByPlaceholderText('Leave a comment')).toBeNull();
+});
+
 test('file-level comments render above the diff with a File label', () => {
   render(<FileDiffView file={file}
     comments={[{ id: 1, file: 'src/a.ts', body: 'file note' }]}
