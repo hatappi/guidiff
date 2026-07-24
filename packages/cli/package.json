@@ -6,6 +6,7 @@
   "bin": { "guidiff": "./src/index.ts" },
   "dependencies": {
     "@guidiff/schema": "workspace:*",
-    "@guidiff/ui": "workspace:*"
+    "@guidiff/ui": "workspace:*",
+    "zod": "^3.25.0"
   }
 }
