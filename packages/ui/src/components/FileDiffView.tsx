@@ -136,19 +136,20 @@ export default function FileDiffView(props: FileDiffViewProps) {
           />
           Viewed
         </label>
-      </div>
-      {!file.state.viewed && (fileComments.length > 0 || fileFormOpen) && (
-        <div className="file-comments">
-          {fileComments.length > 0 && (
-            <CommentThread
-              comments={fileComments}
-              onUpdate={props.onUpdateComment}
-              onDelete={props.onDeleteComment}
-            />
-          )}
-          {fileFormOpen && (
+        {/* Anchored to the sticky header so the form stays visible mid-scroll. */}
+        {!file.state.viewed && fileFormOpen && (
+          <div className="file-comment-popover">
             <CommentForm onSubmit={submitFileComment} onCancel={() => setFileFormOpen(false)} />
-          )}
+          </div>
+        )}
+      </div>
+      {!file.state.viewed && fileComments.length > 0 && (
+        <div className="file-comments">
+          <CommentThread
+            comments={fileComments}
+            onUpdate={props.onUpdateComment}
+            onDelete={props.onDeleteComment}
+          />
         </div>
       )}
       {file.binary ? (
