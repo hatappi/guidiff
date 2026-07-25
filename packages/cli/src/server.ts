@@ -30,7 +30,9 @@ const SubmitSchema = z.object({ verdict: VerdictSchema, overallComment: z.string
 const ViewedSchema = z.object({ path: z.string().min(1), viewed: z.boolean() });
 const SectionReviewedSchema = z.object({ reviewed: z.boolean() });
 const CommentPatchSchema = z.object({
-  body: z.string().min(1),
+  // An empty body is only valid alongside a suggestion; the store's re-parse
+  // against ReviewCommentSchema enforces that after the patch is applied.
+  body: z.string(),
   suggestion: z.string().nullable().optional(),
 });
 

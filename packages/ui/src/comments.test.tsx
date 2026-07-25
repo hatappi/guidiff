@@ -169,6 +169,33 @@ test('a comment with a suggestion renders the current lines above the replacemen
   ]);
 });
 
+test('suggestion rows render code through CodeCell so file syntax applies', () => {
+  render(<FileDiffView file={file}
+    comments={[{
+      id: 1, file: 'src/a.ts', side: 'new', startLine: 1, endLine: 2,
+      body: 'merge them', suggestion: 'line one and two',
+    }]}
+    viewMode="unified"
+    onToggleViewed={noop} onAddComment={noop} onUpdateComment={noop} onDeleteComment={noop} />);
+  const cells = [...document.querySelectorAll('.suggestion-diff td.code')];
+  expect(cells.length).toBe(3);
+  for (const cell of cells) {
+    expect(cell.querySelector('.code-inner')).not.toBeNull();
+  }
+});
+
+test('a suggestion-only comment renders without an empty body block', () => {
+  render(<FileDiffView file={file}
+    comments={[{
+      id: 1, file: 'src/a.ts', side: 'new', startLine: 1, endLine: 2,
+      body: '', suggestion: 'line one and two',
+    }]}
+    viewMode="unified"
+    onToggleViewed={noop} onAddComment={noop} onUpdateComment={noop} onDeleteComment={noop} />);
+  expect(screen.getByText('Suggested change')).toBeTruthy();
+  expect(document.querySelector('.comment-body')).toBeNull();
+});
+
 test('editing a comment reports the suggestion alongside the body', () => {
   const onUpdateComment = mock(noop);
   render(<FileDiffView file={file}

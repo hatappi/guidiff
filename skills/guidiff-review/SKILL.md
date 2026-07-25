@@ -142,7 +142,8 @@ When the background task exits, read its output:
     proposing your own variant. Still confirm before editing, mention any
     suggestion you believe is wrong (rather than silently skipping it), and
     apply the accompanying `body` guidance too when it asks for more than the
-    replaced lines. Line numbers shift as you edit — apply suggestions to a file
+    replaced lines. `body` may be empty (`""`) on a comment carrying a
+    suggestion — the replacement code is the entire message. Line numbers shift as you edit — apply suggestions to a file
     bottom-up, or re-read the file between edits.
 - **exit 2**: the review was cancelled. Say so and stop; do not act on the diff.
 - **exit 1**: read stderr, fix the problem (e.g. regenerate an invalid guide) and retry once.

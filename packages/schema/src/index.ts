@@ -34,7 +34,8 @@ export const ReviewCommentSchema = z
     side: z.enum(['new', 'old']).optional(),
     startLine: z.number().int().positive().optional(),
     endLine: z.number().int().positive().optional(),
-    body: z.string().min(1),
+    // May be empty only when the comment carries a suggestion (enforced below).
+    body: z.string(),
     // Replacement text for startLine..endLine of the post-change file, like a
     // GitHub suggested change. Empty string means "delete those lines".
     suggestion: z.string().optional(),
@@ -54,6 +55,11 @@ export const ReviewCommentSchema = z
     // new-side line range — never file-level, never on deleted lines.
     (c) => c.suggestion === undefined || (c.side === 'new' && c.startLine !== undefined),
     { message: 'suggestion requires a new-side line range' },
+  )
+  .refine(
+    // A suggestion speaks for itself; anything else needs words.
+    (c) => c.body !== '' || c.suggestion !== undefined,
+    { message: 'body is required unless the comment carries a suggestion' },
   );
 export type ReviewComment = z.infer<typeof ReviewCommentSchema>;
 

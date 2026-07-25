@@ -90,6 +90,30 @@ describe('ReviewResultSchema', () => {
     expect(ReviewResultSchema.parse(result)).toEqual(result);
   });
 
+  test('accepts a suggestion-only comment with an empty body', () => {
+    const result: ReviewResult = {
+      version: 1,
+      verdict: 'request_changes',
+      comments: [
+        { file: 'a', side: 'new', startLine: 3, endLine: 4, body: '', suggestion: 'const a = 1;' },
+      ],
+      reviewedSections: [],
+    };
+    expect(ReviewResultSchema.parse(result)).toEqual(result);
+  });
+
+  test('rejects an empty body without a suggestion', () => {
+    const withComment = (c: unknown) => ({
+      version: 1, verdict: 'approve', comments: [c], reviewedSections: [],
+    });
+    expect(() => ReviewResultSchema.parse(
+      withComment({ file: 'a', side: 'new', startLine: 3, endLine: 3, body: '' }),
+    )).toThrow();
+    expect(() => ReviewResultSchema.parse(
+      withComment({ file: 'a', body: '' }),
+    )).toThrow();
+  });
+
   test('rejects a suggestion without a new-side line range', () => {
     const withComment = (c: unknown) => ({
       version: 1, verdict: 'approve', comments: [c], reviewedSections: [],

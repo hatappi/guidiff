@@ -45,6 +45,23 @@ test('removing the suggestion submits the body alone', () => {
   expect(onSubmit).toHaveBeenCalledWith('note');
 });
 
+test('a suggestion alone submits with an empty body', () => {
+  const onSubmit = mock(noop);
+  render(<CommentForm suggestionBase={['line one']} onSubmit={onSubmit} onCancel={noop} />);
+  fireEvent.click(screen.getByText('± Suggest a change'));
+  fireEvent.click(screen.getByText('Add comment'));
+  expect(onSubmit).toHaveBeenCalledWith('', 'line one');
+});
+
+test('removing the suggestion disables submitting an empty comment again', () => {
+  const onSubmit = mock(noop);
+  render(<CommentForm suggestionBase={['line one']} onSubmit={onSubmit} onCancel={noop} />);
+  fireEvent.click(screen.getByText('± Suggest a change'));
+  fireEvent.click(screen.getByText('Remove'));
+  fireEvent.click(screen.getByText('Add comment'));
+  expect(onSubmit).not.toHaveBeenCalled();
+});
+
 test('cmd+enter inside the suggestion editor submits both fields', () => {
   const onSubmit = mock(noop);
   render(<CommentForm initialBody="note" suggestionBase={['x']} onSubmit={onSubmit} onCancel={noop} />);

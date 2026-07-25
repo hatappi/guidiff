@@ -12,9 +12,11 @@ export default function CommentForm(props: {
   const [body, setBody] = useState(props.initialBody ?? '');
   // null = no suggestion block on this comment.
   const [suggestion, setSuggestion] = useState<string | null>(props.initialSuggestion ?? null);
+  // A suggestion can stand on its own; a plain comment needs a body.
+  const submittable = () => body.trim() !== '' || suggestion !== null;
   const submit = () => {
+    if (!submittable()) return;
     const trimmed = body.trim();
-    if (trimmed === '') return;
     // Keep the single-argument call when there is no suggestion.
     if (suggestion === null) props.onSubmit(trimmed);
     else props.onSubmit(trimmed, suggestion);
@@ -63,7 +65,7 @@ export default function CommentForm(props: {
         )}
         <span className="comment-form-spacer" />
         <button onClick={props.onCancel}>Cancel</button>
-        <button className="primary" disabled={body.trim() === ''} onClick={submit}>
+        <button className="primary" disabled={!submittable()} onClick={submit}>
           {props.initialBody ? 'Save' : 'Add comment'}
         </button>
       </div>
