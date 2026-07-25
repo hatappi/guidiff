@@ -110,6 +110,128 @@ describe('review api', () => {
     }
   });
 
+  test('suggestion round-trips through post and submit', async () => {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const { url, outcome } = boot(gitDir);
+
+    const created = await (await fetch(`${url}/api/comments`, {
+      method: 'POST',
+      body: JSON.stringify({
+        file: 'src/a.ts', side: 'new', startLine: 1, endLine: 1,
+        body: 'prefer a const', suggestion: 'const a = 3;',
+      }),
+    })).json();
+    expect(created.suggestion).toBe('const a = 3;');
+
+    await fetch(`${url}/api/submit`, { method: 'POST', body: JSON.stringify({ verdict: 'request_changes' }) });
+    const out = await outcome;
+    if (out.type === 'submit') {
+      expect(out.result.comments).toEqual([{
+        file: 'src/a.ts', side: 'new', startLine: 1, endLine: 1,
+        body: 'prefer a const', suggestion: 'const a = 3;',
+      }]);
+    }
+  });
+
+  test('PATCH edits a suggestion, and null removes it while keeping the comment', async () => {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const { url } = boot(gitDir);
+    const created = await (await fetch(`${url}/api/comments`, {
+      method: 'POST',
+      body: JSON.stringify({
+        file: 'src/a.ts', side: 'new', startLine: 1, endLine: 1, body: 'b', suggestion: 'old',
+      }),
+    })).json();
+
+    const edited = await (await fetch(`${url}/api/comments/${created.id}`, {
+      method: 'PATCH', body: JSON.stringify({ body: 'b2', suggestion: 'new' }),
+    })).json();
+    expect(edited).toEqual({ id: created.id, file: 'src/a.ts', side: 'new', startLine: 1, endLine: 1, body: 'b2', suggestion: 'new' });
+
+    // Omitting suggestion leaves it untouched.
+    const kept = await (await fetch(`${url}/api/comments/${created.id}`, {
+      method: 'PATCH', body: JSON.stringify({ body: 'b3' }),
+    })).json();
+    expect(kept.suggestion).toBe('new');
+
+    const cleared = await (await fetch(`${url}/api/comments/${created.id}`, {
+      method: 'PATCH', body: JSON.stringify({ body: 'b4', suggestion: null }),
+    })).json();
+    expect(cleared).not.toHaveProperty('suggestion');
+    expect(cleared.body).toBe('b4');
+  });
+
+  test('a suggestion-only comment with an empty body round-trips', async () => {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const { url, outcome } = boot(gitDir);
+
+    const postRes = await fetch(`${url}/api/comments`, {
+      method: 'POST',
+      body: JSON.stringify({
+        file: 'src/a.ts', side: 'new', startLine: 1, endLine: 1, body: '', suggestion: 'const a = 3;',
+      }),
+    });
+    expect(postRes.status).toBe(201);
+    const created = await postRes.json();
+
+    // Emptying the body via PATCH is fine as long as the suggestion stays.
+    const patchRes = await fetch(`${url}/api/comments/${created.id}`, {
+      method: 'PATCH', body: JSON.stringify({ body: '', suggestion: 'const a = 4;' }),
+    });
+    expect(patchRes.status).toBe(200);
+
+    await fetch(`${url}/api/submit`, { method: 'POST', body: JSON.stringify({ verdict: 'request_changes' }) });
+    const out = await outcome;
+    if (out.type === 'submit') {
+      expect(out.result.comments).toEqual([{
+        file: 'src/a.ts', side: 'new', startLine: 1, endLine: 1, body: '', suggestion: 'const a = 4;',
+      }]);
+    }
+  });
+
+  test('removing the last content from a comment returns 400', async () => {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const { url } = boot(gitDir);
+    // Empty body without a suggestion is rejected outright.
+    const postRes = await fetch(`${url}/api/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ file: 'src/a.ts', side: 'new', startLine: 1, endLine: 1, body: '' }),
+    });
+    expect(postRes.status).toBe(400);
+    // So is a PATCH that empties the body while dropping the suggestion.
+    const created = await (await fetch(`${url}/api/comments`, {
+      method: 'POST',
+      body: JSON.stringify({
+        file: 'src/a.ts', side: 'new', startLine: 1, endLine: 1, body: '', suggestion: 'const a = 3;',
+      }),
+    })).json();
+    const res = await fetch(`${url}/api/comments/${created.id}`, {
+      method: 'PATCH', body: JSON.stringify({ body: '', suggestion: null }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test('PATCH adding a suggestion to a file-level comment returns 400', async () => {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const { url } = boot(gitDir);
+    const created = await (await fetch(`${url}/api/comments`, {
+      method: 'POST', body: JSON.stringify({ file: 'src/a.ts', body: 'file note' }),
+    })).json();
+    const res = await fetch(`${url}/api/comments/${created.id}`, {
+      method: 'PATCH', body: JSON.stringify({ body: 'file note', suggestion: 'nope' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test('POST with a suggestion on a file-level comment returns 400', async () => {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const { url } = boot(gitDir);
+    const res = await fetch(`${url}/api/comments`, {
+      method: 'POST', body: JSON.stringify({ file: 'src/a.ts', body: 'x', suggestion: 'y' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
   test('PUT /api/files/viewed persists state to gitDir', async () => {
     const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
     const { url } = boot(gitDir);

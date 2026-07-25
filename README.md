@@ -13,6 +13,9 @@ returns your review straight to the AI session that launched it.
   lockfile churn last.
 - Launched from a Claude Code session, the review result (verdict + line comments)
   lands back in that exact session — no copy-paste, no wrong-window mistakes.
+- Don't just describe the fix — **suggest the code**. Select lines, hit
+  *± Suggest a change*, and edit them right in the comment; the session applies
+  your replacement verbatim.
 
 ## Install
 
@@ -53,7 +56,8 @@ stdout carries **only** the result JSON; all logs go to stderr.
 
 Then ask Claude: *"guidiff でレビューして"* / *"review this with guidiff"*.
 The session generates a guide for its own changes, opens the UI, and acts on
-your verdict and comments when you submit.
+your verdict and comments when you submit — applying any suggested changes
+as written.
 
 ## Development
 
