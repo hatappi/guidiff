@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import type { DiffLine, ReviewComment, ReviewPayload, StoredComment } from '@guidiff/schema';
 import { buildSplitRows } from '../split.ts';
+import { newSideLines } from '../suggestion.ts';
 import { CodeCell } from './DiffLines.tsx';
 import CommentForm from './CommentForm.tsx';
 import CommentThread from './CommentThread.tsx';
@@ -14,7 +15,7 @@ export interface FileDiffViewProps {
   viewMode: 'unified' | 'split';
   onToggleViewed: (path: string, viewed: boolean) => void;
   onAddComment: (c: ReviewComment) => void;
-  onUpdateComment: (id: number, body: string) => void;
+  onUpdateComment: (id: number, body: string, suggestion?: string | null) => void;
   onDeleteComment: (id: number) => void;
 }
 
@@ -93,7 +94,7 @@ export default function FileDiffView(props: FileDiffViewProps) {
     onMouseEnter: dragging ? () => extendSelect(key) : undefined,
   });
 
-  const submitComment = (body: string) => {
+  const submitComment = (body: string, suggestion?: string) => {
     if (!selection) return;
     props.onAddComment({
       file: file.path,
@@ -101,9 +102,25 @@ export default function FileDiffView(props: FileDiffViewProps) {
       startLine: selection.start,
       endLine: selection.end,
       body,
+      ...(suggestion === undefined ? {} : { suggestion }),
     });
     setFormOpen(false);
     setSelection(null);
+  };
+
+  // Suggestions replace lines of the post-change file, so they are offered only
+  // for a new-side selection that the diff shows in full.
+  const selectionBase = selection && selection.side === 'new'
+    ? newSideLines(file.hunks, selection.start, selection.end)
+    : null;
+  const originalOf = (c: StoredComment) =>
+    c.side === 'new' && c.startLine !== undefined && c.endLine !== undefined
+      ? newSideLines(file.hunks, c.startLine, c.endLine)
+      : null;
+  const threadProps = {
+    resolveOriginal: originalOf,
+    onUpdate: props.onUpdateComment,
+    onDelete: props.onDeleteComment,
   };
 
   const cancelComment = () => {
@@ -145,11 +162,7 @@ export default function FileDiffView(props: FileDiffViewProps) {
       </div>
       {!file.state.viewed && fileComments.length > 0 && (
         <div className="file-comments">
-          <CommentThread
-            comments={fileComments}
-            onUpdate={props.onUpdateComment}
-            onDelete={props.onDeleteComment}
-          />
+          <CommentThread comments={fileComments} {...threadProps} />
         </div>
       )}
       {file.binary ? (
@@ -184,16 +197,16 @@ export default function FileDiffView(props: FileDiffViewProps) {
                       </tr>
                       {lineComments.length > 0 && (
                         <tr className="inline-row"><td colSpan={3}>
-                          <CommentThread
-                            comments={lineComments}
-                            onUpdate={props.onUpdateComment}
-                            onDelete={props.onDeleteComment}
-                          />
+                          <CommentThread comments={lineComments} {...threadProps} />
                         </td></tr>
                       )}
                       {showForm && (
                         <tr className="inline-row"><td colSpan={3}>
-                          <CommentForm onSubmit={submitComment} onCancel={cancelComment} />
+                          <CommentForm
+                            suggestionBase={selectionBase}
+                            onSubmit={submitComment}
+                            onCancel={cancelComment}
+                          />
                         </td></tr>
                       )}
                     </Fragment>
@@ -245,16 +258,16 @@ export default function FileDiffView(props: FileDiffViewProps) {
                       </tr>
                       {rowComments.length > 0 && (
                         <tr className="inline-row"><td colSpan={4}>
-                          <CommentThread
-                            comments={rowComments}
-                            onUpdate={props.onUpdateComment}
-                            onDelete={props.onDeleteComment}
-                          />
+                          <CommentThread comments={rowComments} {...threadProps} />
                         </td></tr>
                       )}
                       {showForm && (
                         <tr className="inline-row"><td colSpan={4}>
-                          <CommentForm onSubmit={submitComment} onCancel={cancelComment} />
+                          <CommentForm
+                            suggestionBase={selectionBase}
+                            onSubmit={submitComment}
+                            onCancel={cancelComment}
+                          />
                         </td></tr>
                       )}
                     </Fragment>

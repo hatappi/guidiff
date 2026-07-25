@@ -29,7 +29,10 @@ export interface ServerOptions {
 const SubmitSchema = z.object({ verdict: VerdictSchema, overallComment: z.string().optional() });
 const ViewedSchema = z.object({ path: z.string().min(1), viewed: z.boolean() });
 const SectionReviewedSchema = z.object({ reviewed: z.boolean() });
-const CommentPatchSchema = z.object({ body: z.string().min(1) });
+const CommentPatchSchema = z.object({
+  body: z.string().min(1),
+  suggestion: z.string().nullable().optional(),
+});
 
 export function startServer(opts: ServerOptions) {
   const store = new ReviewStore();
@@ -76,8 +79,8 @@ export function startServer(opts: ServerOptions) {
       '/api/comments/:id': {
         PATCH: async (req: Request & { params: { id: string } }) => {
           try {
-            const { body } = await parseBody(req, CommentPatchSchema);
-            const updated = store.updateComment(Number(req.params.id), body);
+            const patch = await parseBody(req, CommentPatchSchema);
+            const updated = store.updateComment(Number(req.params.id), patch);
             return updated ? json(updated) : json({ error: 'not found' }, 404);
           } catch (e) {
             return badRequest(e);

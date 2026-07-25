@@ -111,9 +111,9 @@ export default function App() {
       setPayload((p) => p && { ...p, comments: [...p.comments, stored] }),
     );
   };
-  const updateComment = (id: number, body: string) => {
-    api.updateComment(id, body).then(() =>
-      setPayload((p) => p && { ...p, comments: p.comments.map((c) => (c.id === id ? { ...c, body } : c)) }),
+  const updateComment = (id: number, body: string, suggestion?: string | null) => {
+    api.updateComment(id, body, suggestion).then((updated) =>
+      setPayload((p) => p && { ...p, comments: p.comments.map((c) => (c.id === id ? updated : c)) }),
     );
   };
   const deleteComment = (id: number) => {

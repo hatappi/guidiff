@@ -77,6 +77,33 @@ describe('ReviewResultSchema', () => {
     expect(ReviewResultSchema.parse(result)).toEqual(result);
   });
 
+  test('accepts a suggestion on a new-side line range, including an empty one', () => {
+    const result: ReviewResult = {
+      version: 1,
+      verdict: 'request_changes',
+      comments: [
+        { file: 'a', side: 'new', startLine: 3, endLine: 4, body: 'use const', suggestion: 'const a = 1;' },
+        { file: 'a', side: 'new', startLine: 9, endLine: 9, body: 'dead code', suggestion: '' },
+      ],
+      reviewedSections: [],
+    };
+    expect(ReviewResultSchema.parse(result)).toEqual(result);
+  });
+
+  test('rejects a suggestion without a new-side line range', () => {
+    const withComment = (c: unknown) => ({
+      version: 1, verdict: 'approve', comments: [c], reviewedSections: [],
+    });
+    // File-level: there is no range to replace.
+    expect(() => ReviewResultSchema.parse(
+      withComment({ file: 'a', body: 'x', suggestion: 'y' }),
+    )).toThrow();
+    // Old side: those lines no longer exist in the post-change file.
+    expect(() => ReviewResultSchema.parse(
+      withComment({ file: 'a', side: 'old', startLine: 3, endLine: 3, body: 'x', suggestion: 'y' }),
+    )).toThrow();
+  });
+
   test('rejects a comment with only some line fields', () => {
     const withStartOnly: ReviewResult = {
       version: 1,

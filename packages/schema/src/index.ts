@@ -35,6 +35,9 @@ export const ReviewCommentSchema = z
     startLine: z.number().int().positive().optional(),
     endLine: z.number().int().positive().optional(),
     body: z.string().min(1),
+    // Replacement text for startLine..endLine of the post-change file, like a
+    // GitHub suggested change. Empty string means "delete those lines".
+    suggestion: z.string().optional(),
   })
   .refine(
     (c) =>
@@ -45,6 +48,12 @@ export const ReviewCommentSchema = z
   .refine(
     (c) => c.startLine === undefined || c.endLine === undefined || c.endLine >= c.startLine,
     { message: 'endLine must be >= startLine' },
+  )
+  .refine(
+    // Suggestions rewrite the post-change file, so they only make sense on a
+    // new-side line range — never file-level, never on deleted lines.
+    (c) => c.suggestion === undefined || (c.side === 'new' && c.startLine !== undefined),
+    { message: 'suggestion requires a new-side line range' },
   );
 export type ReviewComment = z.infer<typeof ReviewCommentSchema>;
 

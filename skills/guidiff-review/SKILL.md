@@ -118,6 +118,32 @@ When the background task exits, read its output:
     to re-run the review.
   - Comments without `side`/`startLine`/`endLine` are file-level: they apply to the
     whole file rather than a specific line range.
+  - A comment with a `suggestion` field is a **suggested change** — concrete
+    replacement code the reviewer wrote, like a GitHub suggestion:
+
+    ```jsonc
+    {
+      "file": "src/auth.ts",
+      "side": "new",           // suggestions are always on the new side
+      "startLine": 12,
+      "endLine": 14,
+      "body": "Early-return instead of nesting",
+      "suggestion": "  if (!user) return null;\n  return user.token;"
+    }
+    ```
+
+    Apply it by replacing lines `startLine`–`endLine` of the **current** file with
+    `suggestion` verbatim — it is exact text, including indentation, and it already
+    accounts for the file as changed. An empty `suggestion` (`""`) means delete
+    those lines. Apply suggestions with Edit, matching the existing text of that
+    range; do not re-indent or reformat them.
+
+    Suggestions are the reviewer's own code, so apply them as given rather than
+    proposing your own variant. Still confirm before editing, mention any
+    suggestion you believe is wrong (rather than silently skipping it), and
+    apply the accompanying `body` guidance too when it asks for more than the
+    replaced lines. Line numbers shift as you edit — apply suggestions to a file
+    bottom-up, or re-read the file between edits.
 - **exit 2**: the review was cancelled. Say so and stop; do not act on the diff.
 - **exit 1**: read stderr, fix the problem (e.g. regenerate an invalid guide) and retry once.
 

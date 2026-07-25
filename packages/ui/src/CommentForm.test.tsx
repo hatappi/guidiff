@@ -13,6 +13,46 @@ test('cmd+enter submits the trimmed body', () => {
   expect(onSubmit).toHaveBeenCalledWith('looks off');
 });
 
+test('the suggest button appears only when the range is suggestable', () => {
+  const { rerender } = render(<CommentForm onSubmit={noop} onCancel={noop} />);
+  expect(screen.queryByText('± Suggest a change')).toBeNull();
+  rerender(<CommentForm suggestionBase={['const a = 1;']} onSubmit={noop} onCancel={noop} />);
+  expect(screen.getByText('± Suggest a change')).toBeTruthy();
+});
+
+test('suggesting prefills the current lines and submits body plus suggestion', () => {
+  const onSubmit = mock(noop);
+  render(<CommentForm suggestionBase={['line one', 'line two']} onSubmit={onSubmit} onCancel={noop} />);
+  fireEvent.click(screen.getByText('± Suggest a change'));
+  const editor = screen.getByLabelText('Suggested change') as HTMLTextAreaElement;
+  expect(editor.value).toBe('line one\nline two');
+  fireEvent.change(editor, { target: { value: 'line one!' } });
+  fireEvent.change(screen.getByPlaceholderText('Leave a comment'), { target: { value: 'squash these' } });
+  fireEvent.click(screen.getByText('Add comment'));
+  expect(onSubmit).toHaveBeenCalledWith('squash these', 'line one!');
+});
+
+test('removing the suggestion submits the body alone', () => {
+  const onSubmit = mock(noop);
+  render(
+    <CommentForm initialBody="note" initialSuggestion="old" suggestionBase={['x']}
+      onSubmit={onSubmit} onCancel={noop} />,
+  );
+  expect((screen.getByLabelText('Suggested change') as HTMLTextAreaElement).value).toBe('old');
+  fireEvent.click(screen.getByText('Remove'));
+  expect(screen.queryByLabelText('Suggested change')).toBeNull();
+  fireEvent.click(screen.getByText('Save'));
+  expect(onSubmit).toHaveBeenCalledWith('note');
+});
+
+test('cmd+enter inside the suggestion editor submits both fields', () => {
+  const onSubmit = mock(noop);
+  render(<CommentForm initialBody="note" suggestionBase={['x']} onSubmit={onSubmit} onCancel={noop} />);
+  fireEvent.click(screen.getByText('± Suggest a change'));
+  fireEvent.keyDown(screen.getByLabelText('Suggested change'), { key: 'Enter', metaKey: true });
+  expect(onSubmit).toHaveBeenCalledWith('note', 'x');
+});
+
 test('ctrl+enter submits; plain enter and empty body do not', () => {
   const onSubmit = mock(noop);
   render(<CommentForm onSubmit={onSubmit} onCancel={noop} />);

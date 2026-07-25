@@ -14,8 +14,9 @@ const jsonInit = (method: string, body: unknown): RequestInit => ({
 
 export const fetchReview = () => request<ReviewPayload>('/api/review');
 export const createComment = (c: ReviewComment) => request<StoredComment>('/api/comments', jsonInit('POST', c));
-export const updateComment = (id: number, body: string) =>
-  request<StoredComment>(`/api/comments/${id}`, jsonInit('PATCH', { body }));
+// suggestion: null removes an existing suggestion, undefined leaves it alone.
+export const updateComment = (id: number, body: string, suggestion?: string | null) =>
+  request<StoredComment>(`/api/comments/${id}`, jsonInit('PATCH', { body, suggestion }));
 export const deleteComment = (id: number) => request(`/api/comments/${id}`, { method: 'DELETE' });
 export const setFileViewed = (path: string, viewed: boolean) =>
   request('/api/files/viewed', jsonInit('PUT', { path, viewed }));

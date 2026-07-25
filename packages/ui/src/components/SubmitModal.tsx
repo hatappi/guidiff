@@ -55,7 +55,9 @@ export default function SubmitModal(props: {
               <li key={c.id}>
                 <span className="comment-loc">
                   {c.startLine === undefined ? c.file : `${c.file}:${c.startLine}`}
-                </span> {c.body}
+                </span>{' '}
+                {c.suggestion !== undefined && <span className="suggestion-tag">± suggestion</span>}{' '}
+                {c.body}
               </li>
             ))}
           </ul>

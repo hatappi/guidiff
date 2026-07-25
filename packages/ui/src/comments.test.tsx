@@ -124,6 +124,66 @@ test('split view: dragging across sides does not extend the selection', () => {
   });
 });
 
+test('suggesting a change on selected lines adds a comment carrying the suggestion', () => {
+  const onAddComment = mock(noop);
+  render(<FileDiffView file={file} comments={[]} viewMode="unified"
+    onToggleViewed={noop} onAddComment={onAddComment} onUpdateComment={noop} onDeleteComment={noop} />);
+  fireEvent.mouseDown(screen.getByText('1'));
+  fireEvent.mouseEnter(screen.getByText('2'));
+  fireEvent.mouseUp(document);
+  fireEvent.click(screen.getByText('± Suggest a change'));
+  const editor = screen.getByLabelText('Suggested change') as HTMLTextAreaElement;
+  expect(editor.value).toBe('line one\nline two');
+  fireEvent.change(editor, { target: { value: 'line one and two' } });
+  fireEvent.change(screen.getByPlaceholderText('Leave a comment'), { target: { value: 'merge them' } });
+  fireEvent.click(screen.getByText('Add comment'));
+  expect(onAddComment).toHaveBeenCalledWith({
+    file: 'src/a.ts', side: 'new', startLine: 1, endLine: 2,
+    body: 'merge them', suggestion: 'line one and two',
+  });
+});
+
+test('old-side selections cannot be suggested', () => {
+  render(<FileDiffView file={splitDragFile} comments={[]} viewMode="split"
+    onToggleViewed={noop} onAddComment={noop} onUpdateComment={noop} onDeleteComment={noop} />);
+  fireEvent.mouseDown(screen.getByText('3'));
+  fireEvent.mouseUp(document);
+  expect(screen.getByPlaceholderText('Leave a comment')).toBeTruthy();
+  expect(screen.queryByText('± Suggest a change')).toBeNull();
+});
+
+test('a comment with a suggestion renders the current lines above the replacement', () => {
+  render(<FileDiffView file={file}
+    comments={[{
+      id: 1, file: 'src/a.ts', side: 'new', startLine: 1, endLine: 2,
+      body: 'merge them', suggestion: 'line one and two',
+    }]}
+    viewMode="unified"
+    onToggleViewed={noop} onAddComment={noop} onUpdateComment={noop} onDeleteComment={noop} />);
+  expect(screen.getByText('Suggested change')).toBeTruthy();
+  const rows = [...document.querySelectorAll('.suggestion-diff tr')];
+  expect(rows.map((r) => [r.className, r.textContent])).toEqual([
+    ['line-del', 'line one'],
+    ['line-del', 'line two'],
+    ['line-add', 'line one and two'],
+  ]);
+});
+
+test('editing a comment reports the suggestion alongside the body', () => {
+  const onUpdateComment = mock(noop);
+  render(<FileDiffView file={file}
+    comments={[{
+      id: 7, file: 'src/a.ts', side: 'new', startLine: 1, endLine: 1,
+      body: 'note', suggestion: 'line ONE',
+    }]}
+    viewMode="unified"
+    onToggleViewed={noop} onAddComment={noop} onUpdateComment={onUpdateComment} onDeleteComment={noop} />);
+  fireEvent.click(screen.getByText('Edit'));
+  fireEvent.change(screen.getByLabelText('Suggested change'), { target: { value: 'line 1' } });
+  fireEvent.click(screen.getByText('Save'));
+  expect(onUpdateComment).toHaveBeenCalledWith(7, 'note', 'line 1');
+});
+
 test('existing comments render with edit and delete', () => {
   const onDeleteComment = mock(noop);
   render(<FileDiffView file={file}
