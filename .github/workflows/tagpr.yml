@@ -26,6 +26,7 @@ jobs:
     needs: tagpr
     if: needs.tagpr.outputs.tag != ''
     runs-on: ubuntu-latest
+    environment: release
     permissions:
       contents: read
       id-token: write # npm trusted publishing (OIDC)
