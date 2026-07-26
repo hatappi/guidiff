@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.2.5](https://github.com/hatappi/guidiff/compare/v0.2.4...v0.2.5) - 2026-07-26
+
+- feat: auto-scroll to the next file or section when marked viewed by @hatappi in https://github.com/hatappi/guidiff/pull/29
+
 ## [v0.2.4](https://github.com/hatappi/guidiff/commits/v0.2.4) - 2026-07-25
 
 - Scaffold bun workspaces monorepo and add schema contracts by @hatappi in https://github.com/hatappi/guidiff/pull/1
