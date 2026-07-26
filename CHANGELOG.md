@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.2.6](https://github.com/hatappi/guidiff/compare/v0.2.5...v0.2.6) - 2026-07-26
+
+- ci: restrict npm trusted publishing to the release environment by @hatappi in https://github.com/hatappi/guidiff/pull/31
+
 ## [v0.2.5](https://github.com/hatappi/guidiff/compare/v0.2.4...v0.2.5) - 2026-07-26
 
 - feat: auto-scroll to the next file or section when marked viewed by @hatappi in https://github.com/hatappi/guidiff/pull/29
