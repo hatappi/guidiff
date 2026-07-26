@@ -208,4 +208,84 @@ describe('App', () => {
     expect(container.querySelector('#section-core')).toBeTruthy();
     expect(container.querySelector('#section-other-changes')).toBeTruthy();
   });
+
+  const spyScroll = (id: string) => {
+    const el = document.getElementById(id) as HTMLElement;
+    const fn = mock(() => {});
+    el.scrollIntoView = fn;
+    return fn;
+  };
+
+  test('checking a file viewed scrolls to the next file in render order', async () => {
+    payloadToServe = guidedPayload;
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector('#section-core')).toBeTruthy());
+
+    const scrolled = spyScroll('file-src/extra.ts');
+    fireEvent.click(fileCheckbox('src/a.ts'));
+    await waitFor(() =>
+      expect(scrolled).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' }),
+    );
+  });
+
+  test('checking the last file viewed does not scroll', async () => {
+    payloadToServe = guidedPayload;
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector('#section-core')).toBeTruthy());
+
+    const scrolledA = spyScroll('file-src/a.ts');
+    const scrolledExtra = spyScroll('file-src/extra.ts');
+    fireEvent.click(fileCheckbox('src/extra.ts'));
+    expect(scrolledA).not.toHaveBeenCalled();
+    expect(scrolledExtra).not.toHaveBeenCalled();
+  });
+
+  test('unchecking a file viewed does not scroll', async () => {
+    payloadToServe = syncPayload(true, ['core']);
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector('#section-core')).toBeTruthy());
+
+    const scrolled = spyScroll('file-src/b.ts');
+    fireEvent.click(fileCheckbox('src/a.ts'));
+    expect(scrolled).not.toHaveBeenCalled();
+  });
+
+  test('checking a section scrolls to the next section\'s first file', async () => {
+    payloadToServe = guidedPayload;
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector('#section-core')).toBeTruthy());
+
+    const scrolled = spyScroll('file-src/extra.ts');
+    fireEvent.click(sectionCheckbox(container as HTMLElement));
+    await waitFor(() =>
+      expect(scrolled).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' }),
+    );
+  });
+
+  test('checking the last section does not scroll', async () => {
+    payloadToServe = syncPayload(false, []);
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector('#section-core')).toBeTruthy());
+
+    const scrolledA = spyScroll('file-src/a.ts');
+    const scrolledB = spyScroll('file-src/b.ts');
+    fireEvent.click(sectionCheckbox(container as HTMLElement));
+    expect(scrolledA).not.toHaveBeenCalled();
+    expect(scrolledB).not.toHaveBeenCalled();
+  });
+
+  test('without a guide, checking a file viewed scrolls to the next file', async () => {
+    payloadToServe = {
+      ...payload,
+      files: [mkFile('src/a.ts'), mkFile('src/b.ts')],
+    };
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('working tree')).toBeTruthy());
+
+    const scrolled = spyScroll('file-src/b.ts');
+    fireEvent.click(fileCheckbox('src/a.ts'));
+    await waitFor(() =>
+      expect(scrolled).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' }),
+    );
+  });
 });

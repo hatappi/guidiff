@@ -16,6 +16,7 @@ export default function App() {
   const [modalOpen, setModalOpen] = useState(false);
   const [finished, setFinished] = useState<'submit' | 'cancel' | null>(null);
   const [overviewOpen, setOverviewOpen] = useState(true);
+  const [scrollTarget, setScrollTarget] = useState<string | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -44,6 +45,15 @@ export default function App() {
     return () => ro.disconnect();
   }, [payload, overviewOpen]);
 
+  // Marking viewed collapses the file, shifting everything below it, so the
+  // scroll must run after React commits the collapse — an effect, not the
+  // event handler, or it would target the pre-collapse position.
+  useEffect(() => {
+    if (!scrollTarget) return;
+    document.getElementById(scrollTarget)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    setScrollTarget(null);
+  }, [scrollTarget]);
+
   if (finished === 'submit') {
     return (
       <DoneScreen message="✅ Review submitted — the result has been returned to your session. You can close this tab." />
@@ -64,6 +74,10 @@ export default function App() {
   // by itself, so reviewedSections keeps meaning "reviewed in this session".
   const toggleSection = (id: string, reviewed: boolean) => {
     api.setSectionReviewed(id, reviewed).catch(() => {});
+    if (reviewed && groups) {
+      const next = groups[groups.findIndex((g) => g.section.id === id) + 1];
+      if (next) setScrollTarget(next.files[0] ? `file-${next.files[0].path}` : `section-${next.section.id}`);
+    }
     const group = groups?.find((g) => g.section.id === id);
     const paths = new Set(group?.files.map((f) => f.path));
     for (const f of group?.files ?? []) {
@@ -84,6 +98,11 @@ export default function App() {
 
   const toggleViewed = (path: string, viewed: boolean) => {
     api.setFileViewed(path, viewed).catch(() => {});
+    if (viewed) {
+      const ordered = groups ? groups.flatMap((g) => g.files) : payload.files;
+      const next = ordered[ordered.findIndex((f) => f.path === path) + 1];
+      if (next) setScrollTarget(`file-${next.path}`);
+    }
     const group = groups?.find((g) => g.files.some((f) => f.path === path));
     let sectionUpdate: { id: string; reviewed: boolean } | null = null;
     if (group) {
