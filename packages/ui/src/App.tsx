@@ -4,6 +4,7 @@ import * as api from './api.ts';
 import DoneScreen from './components/DoneScreen.tsx';
 import FileDiffView from './components/FileDiffView.tsx';
 import GuideSectionBlock from './components/GuideSectionBlock.tsx';
+import ResizeHandle from './components/ResizeHandle.tsx';
 import SubmitModal from './components/SubmitModal.tsx';
 import { buildSectionGroups } from './sections.ts';
 import { useTheme } from './theme-context.tsx';
@@ -212,6 +213,7 @@ export default function App() {
                   <FileDiffView key={f.path} {...diffProps(f)} />
                 ))}
               </div>
+              <ResizeHandle />
             </section>
           ))}
         </main>
@@ -232,6 +234,7 @@ export default function App() {
               <FileDiffView key={f.path} {...diffProps(f)} />
             ))}
           </main>
+          <ResizeHandle />
         </div>
       )}
       {modalOpen && payload && (

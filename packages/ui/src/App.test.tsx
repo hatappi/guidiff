@@ -297,4 +297,21 @@ describe('App', () => {
       expect(scrolled).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' }),
     );
   });
+
+  test('with a guide, every section row gets a resize handle', async () => {
+    payloadToServe = guidedPayload;
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector('#section-core')).toBeTruthy());
+
+    // core + other-changes の 2 行
+    expect(container.querySelectorAll('.section-row .resize-handle').length).toBe(2);
+  });
+
+  test('without a guide, the sidebar layout gets a resize handle', async () => {
+    payloadToServe = payload;
+    const { container } = render(<App />);
+    await waitFor(() => expect(screen.getByText('working tree')).toBeTruthy());
+
+    expect(container.querySelectorAll('.layout > .resize-handle').length).toBe(1);
+  });
 });
