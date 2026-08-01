@@ -4,6 +4,7 @@ import type { ReviewPayload } from '@guidiff/schema';
 import App from './App.tsx';
 
 const payload: ReviewPayload = {
+  version: '1.2.3-test',
   target: 'working tree',
   guide: null,
   files: [
@@ -34,6 +35,7 @@ mock.module('./api.ts', () => ({
 }));
 
 const guidedPayload: ReviewPayload = {
+  version: '1.2.3-test',
   target: 'working tree',
   guide: {
     version: 1, title: 'G', summary: 'Sum.',
@@ -112,6 +114,7 @@ describe('App', () => {
   });
 
   const syncPayload = (viewed: boolean, reviewedSections: string[]): ReviewPayload => ({
+    version: '1.2.3-test',
     target: 'working tree',
     guide: {
       version: 1, title: 'G', summary: 'Sum.',

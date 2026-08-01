@@ -124,6 +124,7 @@ export interface StoredComment extends ReviewComment {
 }
 
 export interface ReviewPayload {
+  version: string;
   target: string;
   guide: Guide | null;
   files: Array<FileDiff & { state: FileState }>;
