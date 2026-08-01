@@ -46,6 +46,8 @@ for (const t of TARGETS) {
     'build',
     '--compile',
     '--minify',
+    '--define',
+    `GUIDIFF_VERSION=${JSON.stringify(version)}`,
     join(repoRoot, 'packages', 'cli', 'src', 'index.ts'),
     `--target=${t.bunTarget}`,
     '--outfile',
