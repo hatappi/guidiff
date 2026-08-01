@@ -123,4 +123,15 @@ describe('ResizeHandle', () => {
     expect(handle.getAttribute('aria-valuemax')).toBe('640');
     expect(handle.getAttribute('tabindex')).toBe('0');
   });
+
+  test('non-primary buttons do not start a drag', () => {
+    const { getByRole } = render(<ResizeHandle />);
+    const handle = getByRole('separator');
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 320, button: 2 });
+    expect(document.documentElement.hasAttribute('data-resizing')).toBe(false);
+
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 420 });
+    expect(document.documentElement.style.getPropertyValue('--guide-w')).toBe('');
+  });
 });

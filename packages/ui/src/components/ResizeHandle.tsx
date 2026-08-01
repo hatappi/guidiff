@@ -46,6 +46,7 @@ export default function ResizeHandle() {
       aria-valuenow={getGuideWidth()}
       tabIndex={0}
       onPointerDown={(e) => {
+        if (e.button !== 0) return;
         drag.current = { pointerId: e.pointerId, startX: e.clientX, startWidth: getGuideWidth() };
         // Not implemented in happy-dom; real browsers need it so the drag
         // keeps tracking when the pointer leaves the 6px strip.
