@@ -63,6 +63,12 @@ describe('App', () => {
     expect(screen.getByText('const a = 2;')).toBeTruthy();
   });
 
+  test('header shows the CLI version', async () => {
+    payloadToServe = payload;
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('v1.2.3-test')).toBeTruthy());
+  });
+
   test('with a guide, each section renders as a row pairing its guide block with its diffs', async () => {
     payloadToServe = guidedPayload;
     const { container } = render(<App />);
