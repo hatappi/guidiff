@@ -38,6 +38,6 @@ After implementing a change, verify it by dogfooding: build the binary from the 
 
 ## Conventions
 
-- **stdout is sacred in the CLI**: the only stdout write is the final result JSON on submit. Everything else (logs, usage, errors) goes to stderr. Exit codes: 0 submitted, 1 error, 2 cancelled/timeout — the skill and calling sessions depend on this.
+- **stdout is sacred in the CLI**: during a review run the only stdout write is the final result JSON on submit (`--version` prints to stdout and exits before any review starts). Everything else (logs, usage, errors) goes to stderr. Exit codes: 0 submitted, 1 error, 2 cancelled/timeout — the skill and calling sessions depend on this.
 - Imports use explicit `.ts`/`.tsx` extensions (`allowImportingTsExtensions` + `verbatimModuleSyntax`); Bun runs the TypeScript directly, nothing is transpiled ahead of time.
 - Corrupt or schema-incompatible persisted state is silently discarded, never fatal.

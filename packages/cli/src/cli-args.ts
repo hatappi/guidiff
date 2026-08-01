@@ -18,10 +18,14 @@ export function parseCliArgs(argv: string[]): CliOptions {
       timeout: { type: 'string' },
       'no-open': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
+      version: { type: 'boolean', short: 'v' },
     },
   });
   if (values.help) {
     throw new HelpRequested();
+  }
+  if (values.version) {
+    throw new VersionRequested();
   }
   return {
     positionals,
@@ -33,6 +37,8 @@ export function parseCliArgs(argv: string[]): CliOptions {
 }
 
 export class HelpRequested extends Error {}
+
+export class VersionRequested extends Error {}
 
 export const USAGE = `Usage: guidiff [target] [compare-with] [options]
 
@@ -47,5 +53,6 @@ Options:
   --port <n>        Fixed port (default: auto-pick a free port)
   --timeout <min>   Give up waiting for Submit after N minutes (default: wait forever)
   --no-open         Do not open the browser automatically
+  -v, --version     Show version
   -h, --help        Show this help
 `;

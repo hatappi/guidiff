@@ -4,6 +4,7 @@ import type { ReviewPayload } from '@guidiff/schema';
 import App from './App.tsx';
 
 const payload: ReviewPayload = {
+  version: '1.2.3-test',
   target: 'working tree',
   guide: null,
   files: [
@@ -34,6 +35,7 @@ mock.module('./api.ts', () => ({
 }));
 
 const guidedPayload: ReviewPayload = {
+  version: '1.2.3-test',
   target: 'working tree',
   guide: {
     version: 1, title: 'G', summary: 'Sum.',
@@ -59,6 +61,12 @@ describe('App', () => {
     await waitFor(() => expect(screen.getByText('working tree')).toBeTruthy());
     expect(screen.getAllByText('src/a.ts').length).toBeGreaterThan(0);
     expect(screen.getByText('const a = 2;')).toBeTruthy();
+  });
+
+  test('header shows the CLI version', async () => {
+    payloadToServe = payload;
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('v1.2.3-test')).toBeTruthy());
   });
 
   test('with a guide, each section renders as a row pairing its guide block with its diffs', async () => {
@@ -112,6 +120,7 @@ describe('App', () => {
   });
 
   const syncPayload = (viewed: boolean, reviewedSections: string[]): ReviewPayload => ({
+    version: '1.2.3-test',
     target: 'working tree',
     guide: {
       version: 1, title: 'G', summary: 'Sum.',

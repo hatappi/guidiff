@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { parseCliArgs } from './cli-args.ts';
+import { parseCliArgs, VersionRequested } from './cli-args.ts';
 
 describe('parseCliArgs', () => {
   test('defaults', () => {
@@ -19,5 +19,13 @@ describe('parseCliArgs', () => {
 
   test('rejects unknown flags', () => {
     expect(() => parseCliArgs(['--bogus'])).toThrow();
+  });
+
+  test('--version throws VersionRequested', () => {
+    expect(() => parseCliArgs(['--version'])).toThrow(VersionRequested);
+  });
+
+  test('-v throws VersionRequested', () => {
+    expect(() => parseCliArgs(['-v'])).toThrow(VersionRequested);
   });
 });

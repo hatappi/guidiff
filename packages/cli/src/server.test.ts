@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadState } from './state.ts';
 import { startServer } from './server.ts';
+import { VERSION } from './version.ts';
 
 const files: FileDiff[] = [
   {
@@ -38,6 +39,7 @@ describe('review api', () => {
     const res = await fetch(`${url}/api/review`);
     expect(res.status).toBe(200);
     const payload = await res.json();
+    expect(payload.version).toBe(VERSION);
     expect(payload.target).toBe('working tree');
     expect(payload.files[0].path).toBe('src/a.ts');
     expect(payload.files[0].state.viewed).toBe(false);

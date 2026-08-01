@@ -158,6 +158,7 @@ export default function App() {
       <div className="app-header" ref={headerRef}>
         <header className="header">
           <h1>guidiff</h1>
+          <span className="version">v{payload.version}</span>
           <span className="target">{payload.target}</span>
           <span className="progress">
             {payload.guide && groups

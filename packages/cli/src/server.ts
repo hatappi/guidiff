@@ -12,6 +12,7 @@ import {
 import { z } from 'zod';
 import { saveState, setViewed } from './state.ts';
 import { ReviewStore } from './store.ts';
+import { VERSION } from './version.ts';
 
 export type ReviewOutcome = { type: 'submit'; result: ReviewResult } | { type: 'cancel' };
 
@@ -57,6 +58,7 @@ export function startServer(opts: ServerOptions) {
       '/api/review': {
         GET: () => {
           const payload: ReviewPayload = {
+            version: VERSION,
             target: opts.target,
             guide: opts.guide,
             files: opts.files.map((f) => ({
