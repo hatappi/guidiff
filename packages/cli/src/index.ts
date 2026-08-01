@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 import { GuideSchema, type Guide } from '@guidiff/schema';
 import indexHtml from '@guidiff/ui/index.html';
-import { HelpRequested, parseCliArgs, USAGE } from './cli-args.ts';
+import { HelpRequested, parseCliArgs, USAGE, VersionRequested } from './cli-args.ts';
+import { VERSION } from './version.ts';
 import { collectDiff, getGitDir, getRepoRoot, resolveDiffSpec } from './git.ts';
 import { startServer } from './server.ts';
 import { loadState, reconcileFiles } from './state.ts';
@@ -15,6 +16,12 @@ async function main(): Promise<number> {
   } catch (e) {
     if (e instanceof HelpRequested) {
       log(USAGE);
+      return 0;
+    }
+    if (e instanceof VersionRequested) {
+      // stdout is safe here: --version exits before any review starts,
+      // so it cannot collide with the result JSON.
+      console.log(VERSION);
       return 0;
     }
     log(`guidiff: ${e instanceof Error ? e.message : String(e)}`);
