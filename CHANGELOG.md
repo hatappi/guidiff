@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.2.7](https://github.com/hatappi/guidiff/compare/v0.2.6...v0.2.7) - 2026-08-01
+
+- feat: show version info in CLI and web UI by @hatappi in https://github.com/hatappi/guidiff/pull/33
+
 ## [v0.2.6](https://github.com/hatappi/guidiff/compare/v0.2.5...v0.2.6) - 2026-07-26
 
 - ci: restrict npm trusted publishing to the release environment by @hatappi in https://github.com/hatappi/guidiff/pull/31
