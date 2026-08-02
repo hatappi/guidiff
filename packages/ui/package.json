@@ -3,9 +3,12 @@
   "private": true,
   "license": "MIT",
   "type": "module",
-  "exports": { "./index.html": "./index.html" },
+  "exports": {
+    "./index.html": "./index.html"
+  },
   "dependencies": {
     "@guidiff/schema": "workspace:*",
+    "markdown-it": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "shiki": "^3.0.0"
