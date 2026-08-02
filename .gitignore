@@ -3,3 +3,6 @@ dist/
 *.log
 .DS_Store
 guidiff
+
+# superpowers plugin writes specs/plans here; they are working notes, not repo docs
+docs/superpowers/
