@@ -1,4 +1,5 @@
 import type { GuideSection } from '@guidiff/schema';
+import { renderMarkdown } from '../markdown.ts';
 
 const IMPORTANCE_LABEL = { core: 'Core', supporting: 'Supporting', 'low-signal': 'Low signal' } as const;
 
@@ -30,7 +31,10 @@ export default function GuideSectionBlock(props: GuideSectionBlockProps) {
         <h3>{section.title}</h3>
         <span className={`importance-badge ${section.importance}`}>{IMPORTANCE_LABEL[section.importance]}</span>
       </div>
-      <p className="guide-section-desc">{section.description}</p>
+      <div
+        className="guide-section-desc markdown-body"
+        dangerouslySetInnerHTML={{ __html: renderMarkdown(section.description) }}
+      />
       <ul className="anchors">
         {props.files.map((f) => (
           <li key={`${f.path}:${f.line ?? ''}`}>

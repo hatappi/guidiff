@@ -52,3 +52,17 @@ test('anchor without a line renders the bare path', () => {
   fireEvent.click(within(container as HTMLElement).getByText('src/auth.ts'));
   expect(onJump).toHaveBeenCalledWith('src/auth.ts', undefined);
 });
+
+test('renders the description as markdown', () => {
+  const { container } = renderBlock({
+    section: {
+      ...section,
+      description: '**Key point**: hash check\n- resets to *unviewed*\n- uses `reconcileFiles`',
+    },
+  });
+  const desc = container.querySelector('.guide-section-desc') as HTMLElement;
+  expect(desc.querySelector('strong')?.textContent).toBe('Key point');
+  expect(desc.querySelectorAll('li').length).toBe(2);
+  expect(desc.querySelector('em')?.textContent).toBe('unviewed');
+  expect(desc.querySelector('code')?.textContent).toBe('reconcileFiles');
+});

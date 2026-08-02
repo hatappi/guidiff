@@ -314,4 +314,15 @@ describe('App', () => {
 
     expect(container.querySelectorAll('.layout > .resize-handle').length).toBe(1);
   });
+
+  test('renders the guide summary as markdown', async () => {
+    payloadToServe = {
+      ...guidedPayload,
+      guide: { ...guidedPayload.guide!, summary: 'Adds **markdown** support.' },
+    };
+    const { container } = render(<App />);
+    await waitFor(() => expect(container.querySelector('.guide-summary')).toBeTruthy());
+    const summary = container.querySelector('.guide-summary') as HTMLElement;
+    expect(summary.querySelector('strong')?.textContent).toBe('markdown');
+  });
 });

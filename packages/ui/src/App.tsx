@@ -8,6 +8,7 @@ import ResizeHandle from './components/ResizeHandle.tsx';
 import SubmitModal from './components/SubmitModal.tsx';
 import { buildSectionGroups } from './sections.ts';
 import { useTheme } from './theme-context.tsx';
+import { renderMarkdown } from './markdown.ts';
 
 export default function App() {
   const { theme, toggle: toggleTheme } = useTheme();
@@ -189,7 +190,12 @@ export default function App() {
                 {payload.guide.title}
               </button>
             </h2>
-            {overviewOpen && <p className="guide-summary">{payload.guide.summary}</p>}
+            {overviewOpen && (
+              <div
+                className="guide-summary markdown-body"
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(payload.guide.summary) }}
+              />
+            )}
           </section>
         )}
       </div>
