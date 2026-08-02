@@ -86,7 +86,8 @@ Guide-writing principles:
   code for identifiers/paths, bullet lists for enumerations — instead of long
   prose paragraphs; the guide pane is narrow.
 - Anything outside that subset (headings, links, images, tables, code blocks,
-  blockquotes, raw HTML) renders as LITERAL text — never use it.
+  blockquotes, raw HTML) renders as literal text or degrades unpredictably
+  (e.g. a code fence collapses into an inline code span) — never use it.
 - Titles state what the section is about, nothing more. Never prefix them with the
   importance level (no "Core:", "Low-signal:", etc.) — the UI already renders
   `importance` as an icon next to the title.
