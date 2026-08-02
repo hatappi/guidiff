@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.2.9](https://github.com/hatappi/guidiff/compare/v0.2.8...v0.2.9) - 2026-08-02
+
+- chore: git-ignore superpowers spec/plan docs by @hatappi in https://github.com/hatappi/guidiff/pull/37
+- feat: render guide text as a markdown subset by @hatappi in https://github.com/hatappi/guidiff/pull/39
+
 ## [v0.2.8](https://github.com/hatappi/guidiff/compare/v0.2.7...v0.2.8) - 2026-08-02
 
 - feat: make the guide column width resizable by dragging by @hatappi in https://github.com/hatappi/guidiff/pull/35
