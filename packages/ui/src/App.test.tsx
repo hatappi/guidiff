@@ -303,7 +303,7 @@ describe('App', () => {
     const { container } = render(<App />);
     await waitFor(() => expect(container.querySelector('#section-core')).toBeTruthy());
 
-    // core + other-changes の 2 行
+    // one row per section: core + the synthesized other-changes
     expect(container.querySelectorAll('.section-row .resize-handle').length).toBe(2);
   });
 

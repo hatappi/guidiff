@@ -26,7 +26,6 @@ describe('clampGuideWidth', () => {
   });
 
   test('never lets the viewport cap push the max below MIN', () => {
-    // innerWidth 300 → half is 150 < MIN。範囲が逆転しないこと。
     expect(clampGuideWidth(5000, 300)).toBe(MIN_GUIDE_WIDTH);
   });
 
@@ -52,7 +51,7 @@ describe('getGuideWidth / setGuideWidth', () => {
   });
 
   test('setGuideWidth clamps using window.innerWidth', () => {
-    // happy-dom の innerWidth は 1024 → max は 512
+    // happy-dom's innerWidth is 1024, so the max is 512
     expect(setGuideWidth(5000)).toBe(512);
     expect(document.documentElement.style.getPropertyValue('--guide-w')).toBe('512px');
   });

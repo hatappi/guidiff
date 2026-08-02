@@ -4,7 +4,7 @@ import ResizeHandle from './components/ResizeHandle.tsx';
 
 const guideVar = () => document.documentElement.style.getPropertyValue('--guide-w');
 
-// happy-dom の window.innerWidth は 1024 → クランプ上限は 512。
+// happy-dom's window.innerWidth is 1024, so the clamp ceiling is 512.
 describe('ResizeHandle', () => {
   beforeEach(() => {
     document.documentElement.style.removeProperty('--guide-w');
@@ -80,7 +80,6 @@ describe('ResizeHandle', () => {
     fireEvent.pointerCancel(handle, { pointerId: 1 });
     expect(document.documentElement.hasAttribute('data-resizing')).toBe(false);
 
-    // ドラッグ終了後の move は無視される
     fireEvent.pointerMove(handle, { pointerId: 1, clientX: 999 });
     expect(guideVar()).toBe('');
   });
