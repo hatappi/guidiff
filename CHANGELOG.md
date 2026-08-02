@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.2.8](https://github.com/hatappi/guidiff/compare/v0.2.7...v0.2.8) - 2026-08-02
+
+- feat: make the guide column width resizable by dragging by @hatappi in https://github.com/hatappi/guidiff/pull/35
+
 ## [v0.2.7](https://github.com/hatappi/guidiff/compare/v0.2.6...v0.2.7) - 2026-08-01
 
 - feat: show version info in CLI and web UI by @hatappi in https://github.com/hatappi/guidiff/pull/33
