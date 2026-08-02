@@ -241,6 +241,8 @@ button.anchor-link:hover { background: none; text-decoration: underline; }
   position: absolute; top: 0; bottom: 0; left: var(--guide-w, 320px);
   width: 6px; margin-left: -3px; z-index: 3;
   cursor: col-resize; touch-action: none;
+  /* Faint 1px line so the draggable boundary is discoverable at rest. */
+  background: linear-gradient(to right, transparent 2.5px, var(--border) 2.5px, var(--border) 3.5px, transparent 3.5px);
 }
 /* Show a 2px accent line centered in the 6px hit area. */
 .resize-handle:hover, .resize-handle:focus-visible, :root[data-resizing] .resize-handle {
