@@ -6,3 +6,6 @@ guidiff
 
 # superpowers plugin writes specs/plans here; they are working notes, not repo docs
 docs/superpowers/
+
+# personal guidiff plugin settings (guide_language)
+.claude/*.local.md
