@@ -41,13 +41,40 @@ Summarize in 3-5 bullet points, from your own context: what was changed and why,
 the reviewer should scrutinize, and anything intentionally left out. You know this;
 do not re-read the diff for it.
 
-### 3. Generate the guide JSON
+### 3. Decide the guide language
+
+Resolve the language once, before writing anything, and use it for every piece of guide
+prose. First hit wins:
+
+1. A language the user asked for in this session ("英語でガイドを書いて", "write the
+   guide in English").
+2. `guide_language` in the project's `.claude/guidiff.local.md`.
+3. `guide_language` in `~/.claude/guidiff.local.md` — the user's default across repos.
+4. Otherwise, the language the user is speaking in this session.
+
+Read those two files with Read, project first (expand `~` to the absolute home
+directory path — Read rejects a literal `~`), and stop at the first one that yields a
+value. Both are optional: a missing file, missing frontmatter, or a missing
+`guide_language` key just means "not configured" — move on, never report it as an error.
+
+```markdown
+---
+guide_language: en   # any language name or tag: en / ja / English / 日本語
+---
+```
+
+The language applies to prose only: `title`, `summary`, and each section's `title` and
+`description`. Section `id`s stay kebab-case ASCII, and file paths, identifiers, and
+quoted code keep their original spelling regardless of the language.
+
+### 4. Generate the guide JSON
 
 Check the diff size first: `git diff --stat HEAD` (or the refs being reviewed).
 
 - **Under ~150 changed lines**: write the guide yourself.
 - **Over ~150 changed lines**: dispatch a subagent (Agent tool, general-purpose) with:
   - the intent brief,
+  - the resolved guide language,
   - the diff target (e.g. `HEAD`, `main..HEAD`),
   - the guide JSON schema below,
   - the output path (a file in the scratchpad directory, e.g. `<scratchpad>/guidiff-guide-<timestamp>.json`),
@@ -80,6 +107,7 @@ Guide-writing principles:
 - Put the conceptual core first, wiring and call sites second, generated/low-signal
   churn (lockfiles, snapshots) last as `low-signal`.
 - Descriptions explain intent and impact, not what the code literally says.
+- Write all prose in the language resolved in step 3.
 - `summary` and `description` support a markdown subset: `**bold**`, `*italic*`,
   `` `inline code` ``, `-` bullet lists, and `1.` ordered lists. Single `\n`
   renders as a line break. Use it for structure — bold for key terms, inline
@@ -97,7 +125,7 @@ Guide-writing principles:
   file is relevant to several concepts, put it in the section where it matters
   most and mention the relationship in the other section's description instead.
 
-### 4. Launch guidiff in the background
+### 5. Launch guidiff in the background
 
 Run with the Bash tool with `run_in_background: true` (a foreground run would hit the
 10-minute timeout while the user reviews):
@@ -110,7 +138,7 @@ guidiff --guide <scratchpad>/guidiff-guide-<timestamp>.json
 the working tree.) Tell the user the review UI is opening in their browser, then stop —
 the task notification will arrive when they submit.
 
-### 5. Handle the result
+### 6. Handle the result
 
 When the background task exits, read its output:
 
@@ -153,9 +181,10 @@ When the background task exits, read its output:
 - **exit 2**: the review was cancelled. Say so and stop; do not act on the diff.
 - **exit 1**: read stderr, fix the problem (e.g. regenerate an invalid guide) and retry once.
 
-### 6. Re-review cycle
+### 7. Re-review cycle
 
 When re-running after fixes, append to the intent brief: the previous review's comments
 and what you changed in response. Instruct the guide generator to put a "What changed
 since the last review" section first (importance: core). Unchanged files stay marked
-Viewed automatically via guidiff's persisted state.
+Viewed automatically via guidiff's persisted state. Resolve the guide language again
+as in step 3 rather than copying it from the previous run's guide file.

@@ -59,6 +59,22 @@ The session generates a guide for its own changes, opens the UI, and acts on
 your verdict and comments when you submit — applying any suggested changes
 as written.
 
+### Guide language
+
+By default the guide is written in the language you are talking to Claude in.
+To pin a different default, set `guide_language` in `~/.claude/guidiff.local.md`
+(applies to every repo) or `.claude/guidiff.local.md` (this repo only):
+
+```markdown
+---
+guide_language: en
+---
+```
+
+The project file wins over the user file, and asking for a language in the
+conversation wins over both. Add `.claude/*.local.md` to `.gitignore` — these
+files are personal, not shared.
+
 ## Development
 
 ```bash
