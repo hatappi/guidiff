@@ -3,7 +3,7 @@ import { GuideSchema, type Guide } from '@guidiff/schema';
 import indexHtml from '@guidiff/ui/index.html';
 import { HelpRequested, parseCliArgs, USAGE, VersionRequested } from './cli-args.ts';
 import { VERSION } from './version.ts';
-import { collectDiff, getGitDir, getRepoRoot, resolveDiffSpec } from './git.ts';
+import { collectDiff, type DiffSpec, getGitDir, getRepoRoot, resolveDiffSpec } from './git.ts';
 import { startServer } from './server.ts';
 import { loadState, reconcileFiles } from './state.ts';
 
@@ -38,8 +38,15 @@ async function main(): Promise<number> {
   }
   const gitDir = await getGitDir(process.cwd());
 
-  const spec = resolveDiffSpec(opts.positionals);
-  const files = await collectDiff(repoRoot, spec);
+  let spec: DiffSpec;
+  let files;
+  try {
+    spec = resolveDiffSpec(opts.positionals);
+    files = await collectDiff(repoRoot, spec);
+  } catch (e) {
+    log(`guidiff: ${e instanceof Error ? e.message : String(e)}`);
+    return 1;
+  }
   if (files.length === 0) {
     log('guidiff: no changes to review');
     return 1;

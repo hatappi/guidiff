@@ -47,6 +47,8 @@ Examples:
   guidiff .                   Same as above
   guidiff main feature        Review diff between two refs
   guidiff main..HEAD          Range syntax also works
+  guidiff https://github.com/owner/repo/pull/12
+                              Review a GitHub pull request (requires the gh CLI)
 
 Options:
   --guide <file>    Guide JSON to display alongside the diff

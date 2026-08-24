@@ -112,4 +112,43 @@ describe('resolveDiffSpec', () => {
       label: 'main..(working tree)',
     });
   });
+
+  test('a GitHub PR URL becomes a pr spec', () => {
+    expect(resolveDiffSpec(['https://github.com/hatappi/guidiff/pull/41'])).toEqual({
+      kind: 'pr',
+      url: 'https://github.com/hatappi/guidiff/pull/41',
+      label: 'hatappi/guidiff#41',
+    });
+  });
+
+  test('a PR URL with a trailing slash or a /files tail still works', () => {
+    expect(resolveDiffSpec(['https://github.com/hatappi/guidiff/pull/41/'])).toMatchObject({
+      kind: 'pr',
+      label: 'hatappi/guidiff#41',
+    });
+    expect(resolveDiffSpec(['https://github.com/hatappi/guidiff/pull/41/files'])).toMatchObject({
+      kind: 'pr',
+      label: 'hatappi/guidiff#41',
+    });
+  });
+
+  test('http and a www host are accepted', () => {
+    expect(resolveDiffSpec(['http://www.github.com/o/r/pull/7'])).toMatchObject({
+      kind: 'pr',
+      label: 'o/r#7',
+    });
+  });
+
+  test('a PR URL cannot be combined with another ref', () => {
+    expect(() => resolveDiffSpec(['https://github.com/o/r/pull/7', 'main'])).toThrow(
+      /cannot be combined/,
+    );
+    expect(() => resolveDiffSpec(['main', 'https://github.com/o/r/pull/7'])).toThrow(
+      /cannot be combined/,
+    );
+  });
+
+  test('a non-PR github URL is left to git', () => {
+    expect(resolveDiffSpec(['https://github.com/o/r/issues/7'])).toMatchObject({ kind: 'range' });
+  });
 });
