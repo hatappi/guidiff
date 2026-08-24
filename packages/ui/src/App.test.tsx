@@ -325,4 +325,42 @@ describe('App', () => {
     const summary = container.querySelector('.guide-summary') as HTMLElement;
     expect(summary.querySelector('strong')?.textContent).toBe('markdown');
   });
+
+  test('cmd+enter opens the submit modal', async () => {
+    payloadToServe = payload;
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('working tree')).toBeTruthy());
+
+    fireEvent.keyDown(document.body, { key: 'Enter', metaKey: true });
+    await waitFor(() => expect(screen.getByText('Finish your review')).toBeTruthy());
+  });
+
+  test('cmd+enter that submits a comment does not open the submit modal', async () => {
+    payloadToServe = payload;
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('working tree')).toBeTruthy());
+
+    fireEvent.mouseDown(screen.getAllByText('1')[0]!);
+    fireEvent.mouseUp(document);
+    const textarea = screen.getByPlaceholderText('Leave a comment');
+    fireEvent.change(textarea, { target: { value: 'looks off' } });
+    fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+
+    await waitFor(() => expect(screen.queryAllByPlaceholderText('Leave a comment').length).toBe(0));
+    expect(screen.queryAllByText('Finish your review').length).toBe(0);
+  });
+
+  test('cmd+enter while the submit modal is open is left to the modal', async () => {
+    payloadToServe = payload;
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('working tree')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+    await waitFor(() => expect(screen.getByText('Finish your review')).toBeTruthy());
+
+    fireEvent.keyDown(screen.getByLabelText('Change review action'), { key: 'Enter', metaKey: true });
+    await waitFor(() =>
+      expect(screen.getByText(/Review submitted/)).toBeTruthy(),
+    );
+  });
 });

@@ -47,6 +47,22 @@ export default function App() {
     return () => ro.disconnect();
   }, [payload, overviewOpen]);
 
+  // Cmd/Ctrl+Enter opens the submit modal from anywhere. The same chord
+  // submits a comment form and the modal itself, so skip the presses those
+  // already claimed — an unguarded listener would open the modal every time
+  // a comment is posted.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key !== 'Enter') return;
+      if (e.defaultPrevented || modalOpen) return;
+      const el = e.target as HTMLElement | null;
+      if (el?.isContentEditable || el?.tagName === 'TEXTAREA' || el?.tagName === 'INPUT') return;
+      setModalOpen(true);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [modalOpen]);
+
   // Marking viewed collapses the file, shifting everything below it, so the
   // scroll must run after React commits the collapse — an effect, not the
   // event handler, or it would target the pre-collapse position.

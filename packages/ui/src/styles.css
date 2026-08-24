@@ -18,6 +18,8 @@
   --core-accent: #8250df;
   --btn-primary-bg: #1f883d;
   --btn-primary-hover-bg: #1c8139;
+  --btn-danger-bg: #cf222e;
+  --btn-danger-hover-bg: #a40e26;
   --btn-bg: #f6f8fa;
   --btn-hover-bg: #eaeef2;
   --backdrop: rgba(0, 0, 0, 0.4);
@@ -44,6 +46,8 @@
   --core-accent: #a371f7;
   --btn-primary-bg: #238636;
   --btn-primary-hover-bg: #2ea043;
+  --btn-danger-bg: #da3633;
+  --btn-danger-hover-bg: #f85149;
   --btn-bg: #21262d;
   --btn-hover-bg: #30363d;
   --backdrop: rgba(0, 0, 0, 0.6);
@@ -70,6 +74,8 @@
     --core-accent: #a371f7;
     --btn-primary-bg: #238636;
     --btn-primary-hover-bg: #2ea043;
+    --btn-danger-bg: #da3633;
+    --btn-danger-hover-bg: #f85149;
     --btn-bg: #21262d;
     --btn-hover-bg: #30363d;
     --backdrop: rgba(0, 0, 0, 0.6);
@@ -230,12 +236,34 @@ button.anchor-link:hover { background: none; text-decoration: underline; }
 .modal-backdrop { position: fixed; inset: 0; background: var(--backdrop); display: flex; align-items: center; justify-content: center; z-index: 100; }
 .modal { background: var(--bg); border-radius: 8px; padding: 20px; width: 480px; max-height: 80vh; overflow-y: auto; }
 .modal h2 { margin-top: 0; font-size: 16px; }
-.verdict-options { display: flex; gap: 16px; margin: 12px 0; font-size: 14px; }
 .modal textarea { width: 100%; font-size: 14px; border: 1px solid var(--border); border-radius: 6px; padding: 6px; }
 .modal-comments { margin: 12px 0; font-size: 14px; }
 .modal-comments ul { padding-left: 16px; }
 .comment-loc { font-family: monospace; color: var(--fg-muted); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.verdict-split { position: relative; display: flex; }
+.verdict-split .primary { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.verdict-caret {
+  border-top-left-radius: 0; border-bottom-left-radius: 0;
+  border-color: transparent; border-left: 1px solid rgb(255 255 255 / 0.3);
+  padding: 4px 8px; background: var(--btn-primary-bg); color: white;
+}
+.verdict-caret:hover:not(:disabled) { background: var(--btn-primary-hover-bg); }
+.verdict-split .danger { background: var(--btn-danger-bg); }
+.verdict-split .danger:hover:not(:disabled) { background: var(--btn-danger-hover-bg); }
+.verdict-menu {
+  position: absolute; right: 0; bottom: calc(100% + 4px); z-index: 1;
+  margin: 0; padding: 4px; list-style: none; min-width: 160px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+}
+.verdict-menu button {
+  display: block; width: 100%; text-align: left;
+  border: none; border-radius: 4px; background: none;
+}
+.verdict-menu button:hover { background: var(--bg-subtle); }
+.verdict-menu .selected::before { content: '✓ '; }
+.verdict-menu button:not(.selected) { padding-left: 24px; }
 .submit-error { font-size: 14px; color: var(--danger); margin-bottom: 8px; }
 .done { padding: 64px; text-align: center; font-size: 16px; }
 .done-countdown { margin-top: 12px; font-size: 14px; color: var(--fg-muted); }
