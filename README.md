@@ -51,6 +51,11 @@ Reviewing a pull request shells out to [`gh`](https://cli.github.com)
 PR does not need to be fetched locally, but guidiff still has to run inside a git
 repository — that is where the per-file "viewed" state is kept.
 
+guidiff never writes the guide itself: run bare from a terminal it shows a plain
+diff, whatever the target. To get a guided review of a pull request, ask Claude
+(the [plugin skill](#claude-code-plugin) below) — it writes the guide and starts
+`guidiff <pr-url> --guide <file>` for you.
+
 Exit codes: `0` submitted (result JSON on stdout) / `1` error / `2` cancelled.
 stdout carries **only** the result JSON; all logs go to stderr.
 
