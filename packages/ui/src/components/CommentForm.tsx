@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 
 export default function CommentForm(props: {
@@ -21,6 +21,16 @@ export default function CommentForm(props: {
     if (suggestion === null) props.onSubmit(trimmed);
     else props.onSubmit(trimmed, suggestion);
   };
+  // The form only ever appears because the reviewer is about to write, so
+  // take the caret with it. Editing resumes after the existing body rather
+  // than in front of it, which is where a plain autoFocus would land.
+  const bodyRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, []);
   const submitOnModEnter = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
@@ -30,6 +40,7 @@ export default function CommentForm(props: {
   return (
     <div className="comment-form">
       <textarea
+        ref={bodyRef}
         placeholder="Leave a comment"
         value={body}
         onChange={(e) => setBody(e.target.value)}

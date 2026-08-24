@@ -4,6 +4,19 @@ import CommentForm from './components/CommentForm.tsx';
 
 const noop = () => {};
 
+test('the body textarea is focused as soon as the form opens', () => {
+  render(<CommentForm onSubmit={noop} onCancel={noop} />);
+  expect(document.activeElement).toBe(screen.getByPlaceholderText('Leave a comment'));
+});
+
+test('editing an existing comment puts the caret after the body, not before it', () => {
+  render(<CommentForm initialBody="looks off" onSubmit={noop} onCancel={noop} />);
+  const textarea = screen.getByPlaceholderText('Leave a comment') as HTMLTextAreaElement;
+  expect(document.activeElement).toBe(textarea);
+  expect(textarea.selectionStart).toBe('looks off'.length);
+  expect(textarea.selectionEnd).toBe('looks off'.length);
+});
+
 test('cmd+enter submits the trimmed body', () => {
   const onSubmit = mock(noop);
   render(<CommentForm onSubmit={onSubmit} onCancel={noop} />);
