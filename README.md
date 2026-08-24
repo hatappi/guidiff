@@ -42,7 +42,14 @@ guidiff                  # review uncommitted changes (working tree vs HEAD)
 guidiff main feature     # review a ref range
 guidiff main..HEAD       # range syntax works too
 guidiff --guide g.json   # attach a reading guide
+
+guidiff https://github.com/owner/repo/pull/12   # review a GitHub pull request
 ```
+
+Reviewing a pull request shells out to [`gh`](https://cli.github.com)
+(`gh pr diff <url>`), so the GitHub CLI must be installed and authenticated. The
+PR does not need to be fetched locally, but guidiff still has to run inside a git
+repository — that is where the per-file "viewed" state is kept.
 
 Exit codes: `0` submitted (result JSON on stdout) / `1` error / `2` cancelled.
 stdout carries **only** the result JSON; all logs go to stderr.
