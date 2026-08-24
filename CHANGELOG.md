@@ -1,5 +1,12 @@
 # Changelog
 
+## [v0.2.10](https://github.com/hatappi/guidiff/compare/v0.2.9...v0.2.10) - 2026-08-24
+
+- Make the guide language configurable with a default by @hatappi in https://github.com/hatappi/guidiff/pull/41
+- feat: review a GitHub pull request by passing its URL by @hatappi in https://github.com/hatappi/guidiff/pull/43
+- feat: streamline review submission with a split button and shortcuts by @hatappi in https://github.com/hatappi/guidiff/pull/44
+- feat: focus the comment box as soon as the form opens by @hatappi in https://github.com/hatappi/guidiff/pull/45
+
 ## [v0.2.9](https://github.com/hatappi/guidiff/compare/v0.2.8...v0.2.9) - 2026-08-02
 
 - chore: git-ignore superpowers spec/plan docs by @hatappi in https://github.com/hatappi/guidiff/pull/37
