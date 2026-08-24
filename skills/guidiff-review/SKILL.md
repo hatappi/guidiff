@@ -3,14 +3,19 @@ name: guidiff-review
 description: This skill should be used when the user asks to review code changes with a guided
   local review UI — "guidiff でレビュー", "レビュー画面を開いて", "ガイド付きでレビューしたい",
   "review with guidiff", "open the review UI", or after writing a significant amount of code
-  when the user wants to review it before committing. Generates a reading guide for the diff,
+  when the user wants to review it before committing. Also handles reviewing a GitHub pull
+  request — "この PR を guidiff でレビュー", "review this PR", a pasted
+  https://github.com/owner/repo/pull/N URL. Generates a reading guide for the diff,
   launches the guidiff browser UI, waits for the review, and acts on the returned verdict
   and comments.
 allowed-tools:
   - Bash(guidiff:*)
   - Bash(command -v guidiff)
+  - Bash(command -v gh)
   - Bash(git diff:*)
   - Bash(git status:*)
+  - Bash(gh pr view:*)
+  - Bash(gh pr diff:*)
   - Read
   - Write
   - Agent
@@ -35,13 +40,34 @@ install it — do not attempt the review without it:
 
 Then continue once `guidiff --help` works.
 
-### 2. Write an intent brief
+### 2. Fix the review target
+
+The target decides every later command. It is one of:
+
+| Target | guidiff argument | How to read the diff |
+| --- | --- | --- |
+| Uncommitted work (default) | *(none)* | `git diff HEAD` |
+| A ref range | `main..HEAD`, `main feature` | `git diff main..HEAD` |
+| A GitHub pull request | the PR URL | `gh pr diff <url>` |
+
+A PR target is any `https://github.com/<owner>/<repo>/pull/<n>` URL the user pasted or
+named ("この PR をレビューして", "review PR #12"). It additionally needs the GitHub CLI:
+run `command -v gh`, and if it is missing, tell the user to install it
+(<https://cli.github.com>) rather than falling back to a local diff. guidiff still has
+to run inside a git repository — that is where the viewed-state file lives — but the PR
+does not need to be fetched locally.
+
+### 3. Write an intent brief
 
 Summarize in 3-5 bullet points, from your own context: what was changed and why, what
 the reviewer should scrutinize, and anything intentionally left out. You know this;
 do not re-read the diff for it.
 
-### 3. Decide the guide language
+For a PR you did not write, you have no such context: read it instead with
+`gh pr view <url>` (title, body, and the discussion) and build the brief from the
+author's own description.
+
+### 4. Decide the guide language
 
 Resolve the language once, before writing anything, and use it for every piece of guide
 prose. First hit wins:
@@ -67,19 +93,24 @@ The language applies to prose only: `title`, `summary`, and each section's `titl
 `description`. Section `id`s stay kebab-case ASCII, and file paths, identifiers, and
 quoted code keep their original spelling regardless of the language.
 
-### 4. Generate the guide JSON
+### 5. Generate the guide JSON
 
-Check the diff size first: `git diff --stat HEAD` (or the refs being reviewed).
+Check the diff size first: `git diff --stat HEAD` (or the refs being reviewed). For a
+PR target use `gh pr diff <url> --name-only` and `gh pr diff <url> | wc -l` instead.
 
 - **Under ~150 changed lines**: write the guide yourself.
 - **Over ~150 changed lines**: dispatch a subagent (Agent tool, general-purpose) with:
   - the intent brief,
   - the resolved guide language,
-  - the diff target (e.g. `HEAD`, `main..HEAD`),
+  - the diff target (e.g. `HEAD`, `main..HEAD`, or the PR URL),
   - the guide JSON schema below,
   - the output path (a file in the scratchpad directory, e.g. `<scratchpad>/guidiff-guide-<timestamp>.json`),
-  - instruction: "Read the diff yourself with `git diff`. Write the guide JSON to the
-    given path. Reply ONLY with the section titles you chose, one per line."
+  - instruction: "Read the diff yourself with `git diff` (or `gh pr diff <url>` for a
+    PR target). Write the guide JSON to the given path. Reply ONLY with the section
+    titles you chose, one per line."
+
+Anchor `file` paths must match the diff's own paths — for a PR that means the paths in
+`gh pr diff`, which are repository-relative just like git's.
 
 Guide JSON schema (validated by guidiff with zod):
 
@@ -107,7 +138,7 @@ Guide-writing principles:
 - Put the conceptual core first, wiring and call sites second, generated/low-signal
   churn (lockfiles, snapshots) last as `low-signal`.
 - Descriptions explain intent and impact, not what the code literally says.
-- Write all prose in the language resolved in step 3.
+- Write all prose in the language resolved in step 4.
 - `summary` and `description` support a markdown subset: `**bold**`, `*italic*`,
   `` `inline code` ``, `-` bullet lists, and `1.` ordered lists. Single `\n`
   renders as a line break. Use it for structure — bold for key terms, inline
@@ -125,7 +156,7 @@ Guide-writing principles:
   file is relevant to several concepts, put it in the section where it matters
   most and mention the relationship in the other section's description instead.
 
-### 5. Launch guidiff in the background
+### 6. Launch guidiff in the background
 
 Run with the Bash tool with `run_in_background: true` (a foreground run would hit the
 10-minute timeout while the user reviews):
@@ -134,11 +165,14 @@ Run with the Bash tool with `run_in_background: true` (a foreground run would hi
 guidiff --guide <scratchpad>/guidiff-guide-<timestamp>.json
 ```
 
-(Add refs, e.g. `guidiff main..HEAD --guide ...`, when reviewing a range instead of
-the working tree.) Tell the user the review UI is opening in their browser, then stop —
-the task notification will arrive when they submit.
+Pass the target as the first argument when it is not the working tree — a range
+(`guidiff main..HEAD --guide ...`) or a PR URL
+(`guidiff https://github.com/owner/repo/pull/12 --guide ...`); guidiff recognises the
+URL itself and pulls the diff through `gh pr diff`. Tell the user the review UI is
+opening in their browser, then stop — the task notification will arrive when they
+submit.
 
-### 6. Handle the result
+### 7. Handle the result
 
 When the background task exits, read its output:
 
@@ -178,13 +212,17 @@ When the background task exits, read its output:
     replaced lines. `body` may be empty (`""`) on a comment carrying a
     suggestion — the replacement code is the entire message. Line numbers shift as you edit — apply suggestions to a file
     bottom-up, or re-read the file between edits.
+  For a PR target the reviewed code is not necessarily what is checked out locally:
+  report the verdict and the comments, but do not edit files or apply suggestions
+  unless the PR branch is actually the current checkout. Otherwise offer to post the
+  feedback on the PR or to check the branch out first, and let the user choose.
 - **exit 2**: the review was cancelled. Say so and stop; do not act on the diff.
 - **exit 1**: read stderr, fix the problem (e.g. regenerate an invalid guide) and retry once.
 
-### 7. Re-review cycle
+### 8. Re-review cycle
 
 When re-running after fixes, append to the intent brief: the previous review's comments
 and what you changed in response. Instruct the guide generator to put a "What changed
 since the last review" section first (importance: core). Unchanged files stay marked
 Viewed automatically via guidiff's persisted state. Resolve the guide language again
-as in step 3 rather than copying it from the previous run's guide file.
+as in step 4 rather than copying it from the previous run's guide file.

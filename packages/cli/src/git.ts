@@ -1,9 +1,27 @@
 import type { FileDiff, Hunk } from '@guidiff/schema';
 
-export type DiffSpec = { kind: 'worktree' } | { kind: 'range'; args: string[]; label: string };
+export type DiffSpec =
+  | { kind: 'worktree' }
+  | { kind: 'range'; args: string[]; label: string }
+  | { kind: 'pr'; url: string; label: string };
+
+const PR_URL_RE = /^https?:\/\/(?:www\.)?github\.com\/([^/\s]+)\/([^/\s]+)\/pull\/(\d+)(?:\/.*)?$/;
+
+function parsePrUrl(arg: string): { url: string; label: string } | null {
+  const m = arg.match(PR_URL_RE);
+  if (!m) return null;
+  return { url: arg, label: `${m[1]}/${m[2]}#${m[3]}` };
+}
 
 export function resolveDiffSpec(positionals: string[]): DiffSpec {
   const args = positionals.filter((p) => p !== '');
+  const prs = args.map(parsePrUrl).filter((p) => p !== null);
+  if (prs.length > 0) {
+    if (args.length > 1) {
+      throw new Error('a pull request URL cannot be combined with other refs');
+    }
+    return { kind: 'pr', ...prs[0]! };
+  }
   if (args.length === 0 || (args.length === 1 && args[0] === '.')) {
     return { kind: 'worktree' };
   }
@@ -99,7 +117,32 @@ export async function getGitDir(cwd: string): Promise<string> {
 
 const DIFF_BASE_ARGS = ['diff', '--no-color', '--unified=3', '--find-renames'];
 
+// GitHub PR diffs come from `gh`, which handles auth, forks and the API for us.
+export async function ghPrDiff(url: string): Promise<string> {
+  const spawnGh = () => Bun.spawn(['gh', 'pr', 'diff', url], { stdout: 'pipe', stderr: 'pipe' });
+  let proc: ReturnType<typeof spawnGh>;
+  try {
+    proc = spawnGh();
+  } catch {
+    throw new Error(
+      'reviewing a pull request requires the GitHub CLI (gh); install it from https://cli.github.com',
+    );
+  }
+  const [out, err] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ]);
+  const code = await proc.exited;
+  if (code !== 0) {
+    throw new Error(`gh pr diff ${url} failed (exit ${code}): ${err.trim()}`);
+  }
+  return out;
+}
+
 export async function collectDiff(repoRoot: string, spec: DiffSpec): Promise<FileDiff[]> {
+  if (spec.kind === 'pr') {
+    return parseUnifiedDiff(await ghPrDiff(spec.url));
+  }
   if (spec.kind === 'range') {
     return parseUnifiedDiff(await git(repoRoot, [...DIFF_BASE_ARGS, ...spec.args]));
   }
