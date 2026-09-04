@@ -13,6 +13,11 @@ export const OTHER_SECTION_ID = 'other-changes';
  * Derives the section-ordered rendering groups. A file is rendered under the
  * first section that anchors it; files no section anchors are collected into
  * a synthesized trailing "Other changes" section.
+ *
+ * A section none of whose anchored files are in the diff is dropped: it
+ * describes a change that no longer exists (typically reverted after the
+ * guide was written). A section whose files are all owned by an earlier
+ * section still renders, as its prose may add context.
  */
 export function buildSectionGroups(guide: Guide, files: FileWithState[]): SectionGroup[] {
   const byPath = new Map(files.map((f) => [f.path, f]));
@@ -20,6 +25,7 @@ export function buildSectionGroups(guide: Guide, files: FileWithState[]): Sectio
   const groups: SectionGroup[] = [];
 
   for (const section of guide.sections) {
+    if (!section.anchors.some((a) => byPath.has(a.file))) continue;
     const groupFiles: FileWithState[] = [];
     for (const anchor of section.anchors) {
       const f = byPath.get(anchor.file);
