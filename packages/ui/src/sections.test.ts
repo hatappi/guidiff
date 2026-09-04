@@ -75,3 +75,39 @@ describe('buildSectionGroups id collisions', () => {
     expect(groups[1]!.files.map((f) => f.path)).toEqual(['c.ts']);
   });
 });
+
+describe('buildSectionGroups stale sections', () => {
+  const staleGuide: Guide = {
+    version: 1,
+    title: 'T',
+    summary: 'S',
+    sections: [
+      { id: 'core', title: 'Core', description: 'd', importance: 'core',
+        anchors: [{ file: 'a.ts', side: 'new' }] },
+      { id: 'reverted', title: 'Reverted', description: 'd', importance: 'supporting',
+        anchors: [{ file: 'gone.ts', side: 'new' }, { file: 'gone-old.ts', side: 'old' }] },
+      { id: 'partial', title: 'Partial', description: 'd', importance: 'supporting',
+        anchors: [{ file: 'gone-too.ts', side: 'new' }, { file: 'b.ts', side: 'new' }] },
+    ],
+  };
+
+  test('a section whose anchored files all left the diff is dropped', () => {
+    const groups = buildSectionGroups(staleGuide, [file('a.ts'), file('b.ts')]);
+    expect(groups.map((g) => g.section.id)).toEqual(['core', 'partial']);
+    expect(groups[1]!.files.map((f) => f.path)).toEqual(['b.ts']);
+  });
+
+  test('a section anchoring only files owned by earlier sections is kept', () => {
+    const dupGuide: Guide = {
+      ...staleGuide,
+      sections: [
+        staleGuide.sections[0]!,
+        { id: 'narrative', title: 'N', description: 'd', importance: 'supporting',
+          anchors: [{ file: 'a.ts', side: 'new' }] },
+      ],
+    };
+    const groups = buildSectionGroups(dupGuide, [file('a.ts')]);
+    expect(groups.map((g) => g.section.id)).toEqual(['core', 'narrative']);
+    expect(groups[1]!.files).toEqual([]);
+  });
+});
