@@ -198,7 +198,7 @@ describe('App', () => {
 
     fireEvent.click(screen.getByText('Cancel'));
     await waitFor(() => expect(screen.getByText(/Review cancelled/)).toBeTruthy());
-    expect(screen.getByText('Closing in 10s…')).toBeTruthy();
+    expect(screen.getByText('Closing in 5s…')).toBeTruthy();
   });
 
   test('clicking an anchor jumps to the file element', async () => {
