@@ -167,9 +167,7 @@ export default function FileDiffView(props: FileDiffViewProps) {
       )}
       {file.binary ? (
         <div className="binary-note">Binary file not shown</div>
-      ) : file.state.viewed ? (
-        <div className="collapsed-note">Marked as viewed — collapsed</div>
-      ) : (
+      ) : file.state.viewed ? null : (
         file.hunks.map((hunk, i) => (
           <div key={i}>
             <div className="hunk-header">{hunk.header}</div>
