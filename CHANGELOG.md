@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.2.13](https://github.com/hatappi/guidiff/compare/v0.2.12...v0.2.13) - 2026-09-13
+
+- fix(ui): drop the "Marked as viewed — collapsed" note by @hatappi in https://github.com/hatappi/guidiff/pull/50
+
 ## [v0.2.12](https://github.com/hatappi/guidiff/compare/v0.2.11...v0.2.12) - 2026-09-12
 
 - fix(ui): shorten the done screen auto-close countdown to 5s by @hatappi in https://github.com/hatappi/guidiff/pull/48
