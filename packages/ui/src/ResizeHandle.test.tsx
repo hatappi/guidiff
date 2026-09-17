@@ -4,7 +4,8 @@ import ResizeHandle from './components/ResizeHandle.tsx';
 
 const guideVar = () => document.documentElement.style.getPropertyValue('--guide-w');
 
-// happy-dom's window.innerWidth is 1024, so the clamp ceiling is 512.
+// happy-dom's window.innerWidth is 1024, so the default width is 358 (35%)
+// and the clamp ceiling is 512.
 describe('ResizeHandle', () => {
   beforeEach(() => {
     document.documentElement.style.removeProperty('--guide-w');
@@ -15,9 +16,9 @@ describe('ResizeHandle', () => {
     const { getByRole } = render(<ResizeHandle />);
     const handle = getByRole('separator');
 
-    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 320 });
-    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 420 });
-    expect(guideVar()).toBe('420px');
+    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 358 });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 408 });
+    expect(guideVar()).toBe('408px');
 
     fireEvent.pointerMove(handle, { pointerId: 1, clientX: 380 });
     expect(guideVar()).toBe('380px');
@@ -84,13 +85,14 @@ describe('ResizeHandle', () => {
     expect(guideVar()).toBe('');
   });
 
-  test('double-click resets to the default width', () => {
+  test('double-click resets to the ratio-based default', () => {
     const { getByRole } = render(<ResizeHandle />);
     const handle = getByRole('separator');
     document.documentElement.style.setProperty('--guide-w', '450px');
 
     fireEvent.doubleClick(handle);
-    expect(guideVar()).toBe('320px');
+    expect(guideVar()).toBe('');
+    expect(handle.getAttribute('aria-valuenow')).toBe('358');
   });
 
   test('arrow keys adjust the width by 16px and update aria-valuenow', () => {
@@ -98,13 +100,13 @@ describe('ResizeHandle', () => {
     const handle = getByRole('separator');
 
     fireEvent.keyDown(handle, { key: 'ArrowRight' });
-    expect(guideVar()).toBe('336px');
-    expect(handle.getAttribute('aria-valuenow')).toBe('336');
+    expect(guideVar()).toBe('374px');
+    expect(handle.getAttribute('aria-valuenow')).toBe('374');
 
     fireEvent.keyDown(handle, { key: 'ArrowLeft' });
     fireEvent.keyDown(handle, { key: 'ArrowLeft' });
-    expect(guideVar()).toBe('304px');
-    expect(handle.getAttribute('aria-valuenow')).toBe('304');
+    expect(guideVar()).toBe('342px');
+    expect(handle.getAttribute('aria-valuenow')).toBe('342');
   });
 
   test('other keys are ignored', () => {
@@ -119,7 +121,7 @@ describe('ResizeHandle', () => {
     expect(handle.getAttribute('aria-orientation')).toBe('vertical');
     expect(handle.getAttribute('aria-label')).toBe('Resize guide panel');
     expect(handle.getAttribute('aria-valuemin')).toBe('200');
-    expect(handle.getAttribute('aria-valuemax')).toBe('640');
+    expect(handle.getAttribute('aria-valuemax')).toBe('512');
     expect(handle.getAttribute('tabindex')).toBe('0');
   });
 

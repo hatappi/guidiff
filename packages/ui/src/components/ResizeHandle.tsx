@@ -1,10 +1,10 @@
 import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import {
-  DEFAULT_GUIDE_WIDTH,
   KEYBOARD_STEP,
-  MAX_GUIDE_WIDTH,
   MIN_GUIDE_WIDTH,
   getGuideWidth,
+  maxGuideWidth,
+  resetGuideWidth,
   setGuideWidth,
 } from '../resize.ts';
 
@@ -23,10 +23,8 @@ export default function ResizeHandle() {
     if (drag.current) document.documentElement.removeAttribute('data-resizing');
   }, []);
 
-  const apply = (px: number) => {
-    const width = setGuideWidth(px);
-    ref.current?.setAttribute('aria-valuenow', String(width));
-  };
+  const announce = (width: number) => ref.current?.setAttribute('aria-valuenow', String(width));
+  const apply = (px: number) => announce(setGuideWidth(px));
 
   const endDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (drag.current?.pointerId !== e.pointerId) return;
@@ -42,7 +40,7 @@ export default function ResizeHandle() {
       aria-orientation="vertical"
       aria-label="Resize guide panel"
       aria-valuemin={MIN_GUIDE_WIDTH}
-      aria-valuemax={MAX_GUIDE_WIDTH}
+      aria-valuemax={maxGuideWidth(window.innerWidth)}
       aria-valuenow={getGuideWidth()}
       tabIndex={0}
       onPointerDown={(e) => {
@@ -59,7 +57,7 @@ export default function ResizeHandle() {
       }}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
-      onDoubleClick={() => apply(DEFAULT_GUIDE_WIDTH)}
+      onDoubleClick={() => announce(resetGuideWidth())}
       onKeyDown={(e) => {
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
         e.preventDefault();
