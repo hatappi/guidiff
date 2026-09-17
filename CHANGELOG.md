@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.2.14](https://github.com/hatappi/guidiff/compare/v0.2.13...v0.2.14) - 2026-09-17
+
+- feat(ui): default the guide pane to 35% of the viewport by @hatappi in https://github.com/hatappi/guidiff/pull/52
+
 ## [v0.2.13](https://github.com/hatappi/guidiff/compare/v0.2.12...v0.2.13) - 2026-09-13
 
 - fix(ui): drop the "Marked as viewed — collapsed" note by @hatappi in https://github.com/hatappi/guidiff/pull/50
