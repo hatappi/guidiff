@@ -209,7 +209,7 @@ td.ln:hover { background: var(--attention-bg); }
 }
 button.primary { background: var(--btn-primary-bg); color: white; border-color: transparent; }
 button.primary:hover:not(:disabled) { background: var(--btn-primary-hover-bg); }
-.layout { display: grid; grid-template-columns: var(--guide-w, 320px) 1fr; gap: 0; align-items: start; position: relative; }
+.layout { display: grid; grid-template-columns: var(--guide-w, 35%) 1fr; gap: 0; align-items: start; position: relative; }
 .guide-pane { position: sticky; top: var(--header-h); height: calc(100vh - var(--header-h)); overflow-y: auto; padding: 16px; background: var(--bg); border-right: 1px solid var(--border); }
 .guide-pane h2 { font-size: 16px; margin: 0 0 8px; }
 .guide-summary { font-size: 14px; color: var(--fg-muted); }
@@ -267,7 +267,7 @@ button.anchor-link:hover { background: none; text-decoration: underline; }
 .submit-error { font-size: 14px; color: var(--danger); margin-bottom: 8px; }
 .done { padding: 64px; text-align: center; font-size: 16px; }
 .done-countdown { margin-top: 12px; font-size: 14px; color: var(--fg-muted); }
-.section-row { display: grid; grid-template-columns: var(--guide-w, 320px) 1fr; align-items: start; position: relative; }
+.section-row { display: grid; grid-template-columns: var(--guide-w, 35%) 1fr; align-items: start; position: relative; }
 .guide-block {
   position: sticky; top: var(--header-h);
   max-height: calc(100vh - var(--header-h)); overflow-y: auto;
@@ -277,7 +277,7 @@ button.anchor-link:hover { background: none; text-decoration: underline; }
 /* Draggable divider on the guide/diff boundary. Absolutely positioned on
    the shared --guide-w edge so the 2-column grid stays untouched. */
 .resize-handle {
-  position: absolute; top: 0; bottom: 0; left: var(--guide-w, 320px);
+  position: absolute; top: 0; bottom: 0; left: var(--guide-w, 35%);
   width: 6px; margin-left: -3px; z-index: 3;
   cursor: col-resize; touch-action: none;
   /* Faint 1px line so the draggable boundary is discoverable at rest. */

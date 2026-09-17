@@ -1,10 +1,9 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import {
-  DEFAULT_GUIDE_WIDTH,
-  MAX_GUIDE_WIDTH,
   MIN_GUIDE_WIDTH,
   clampGuideWidth,
   getGuideWidth,
+  resetGuideWidth,
   setGuideWidth,
 } from './resize.ts';
 
@@ -17,12 +16,9 @@ describe('clampGuideWidth', () => {
     expect(clampGuideWidth(100, 2000)).toBe(MIN_GUIDE_WIDTH);
   });
 
-  test('clamps above MAX to MAX on a wide viewport', () => {
-    expect(clampGuideWidth(5000, 2000)).toBe(MAX_GUIDE_WIDTH);
-  });
-
-  test('caps the max at half the viewport on narrower screens', () => {
+  test('caps the max at half the viewport', () => {
     expect(clampGuideWidth(5000, 1000)).toBe(500);
+    expect(clampGuideWidth(5000, 2000)).toBe(1000);
   });
 
   test('never lets the viewport cap push the max below MIN', () => {
@@ -39,8 +35,9 @@ describe('getGuideWidth / setGuideWidth', () => {
     document.documentElement.style.removeProperty('--guide-w');
   });
 
-  test('returns the default when the variable is unset', () => {
-    expect(getGuideWidth()).toBe(DEFAULT_GUIDE_WIDTH);
+  // happy-dom's innerWidth is 1024, so the 35% default is 358
+  test('returns 35% of the viewport when the variable is unset', () => {
+    expect(getGuideWidth()).toBe(358);
   });
 
   test('set then get round-trips a clamped value', () => {
@@ -51,13 +48,19 @@ describe('getGuideWidth / setGuideWidth', () => {
   });
 
   test('setGuideWidth clamps using window.innerWidth', () => {
-    // happy-dom's innerWidth is 1024, so the max is 512
+    // the max is half the viewport: 512
     expect(setGuideWidth(5000)).toBe(512);
     expect(document.documentElement.style.getPropertyValue('--guide-w')).toBe('512px');
   });
 
   test('falls back to the default when the variable holds garbage', () => {
     document.documentElement.style.setProperty('--guide-w', 'abc');
-    expect(getGuideWidth()).toBe(DEFAULT_GUIDE_WIDTH);
+    expect(getGuideWidth()).toBe(358);
+  });
+
+  test('resetGuideWidth clears the pinned width back to the ratio default', () => {
+    setGuideWidth(300);
+    expect(resetGuideWidth()).toBe(358);
+    expect(document.documentElement.style.getPropertyValue('--guide-w')).toBe('');
   });
 });
