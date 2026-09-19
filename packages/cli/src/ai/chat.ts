@@ -119,7 +119,12 @@ export class ChatSession {
   }
 
   abort(): void {
-    this.#inflight?.abort();
+    // Release the slot now rather than when the old turn's finally runs, so
+    // "stop, then ask again" never trips BusyError. The stale generator's
+    // finally guards on identity and leaves the new controller alone.
+    const inflight = this.#inflight;
+    this.#inflight = null;
+    inflight?.abort();
   }
 
   clear(): void {

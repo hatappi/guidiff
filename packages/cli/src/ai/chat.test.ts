@@ -134,6 +134,28 @@ describe('ChatSession', () => {
     expect(session.busy()).toBe(false);
   });
 
+  test('abort releases the slot immediately, so sending again right after does not throw', async () => {
+    const s = scripted([
+      [{ type: 'delta', text: 'par' }, { type: 'delta', text: '<wait>' }, { type: 'done', sessionId: 's1' }],
+      [{ type: 'done', sessionId: 's2' }],
+    ]);
+    const session = new ChatSession(opts(s.provider));
+    const first = session.send('why?')[Symbol.asyncIterator]();
+    await first.next();
+    session.abort();
+
+    let second: AsyncIterable<ChatEvent> | undefined;
+    expect(() => {
+      second = session.send('again');
+    }).not.toThrow();
+    expect(session.busy()).toBe(true);
+
+    for (let r = await first.next(); !r.done; r = await first.next()) { /* drain */ }
+    await drain(second!);
+    expect(session.messages()[1]!.status).toBe('aborted');
+    expect(session.messages()[3]!.status).toBe('done');
+  });
+
   test('clear drops messages and the provider session', async () => {
     const s = scripted([
       [{ type: 'done', sessionId: 's1' }],
@@ -146,5 +168,27 @@ describe('ChatSession', () => {
     await drain(session.send('b'));
     expect(s.requests[1]!.sessionId).toBeUndefined();
     expect(session.messages()[0]!.id).toBe(1);
+  });
+
+  test('clear releases the slot immediately too, so sending again right after does not throw', async () => {
+    const s = scripted([
+      [{ type: 'delta', text: 'par' }, { type: 'delta', text: '<wait>' }, { type: 'done', sessionId: 's1' }],
+      [{ type: 'done', sessionId: 's2' }],
+    ]);
+    const session = new ChatSession(opts(s.provider));
+    const first = session.send('why?')[Symbol.asyncIterator]();
+    await first.next();
+    session.clear();
+
+    let second: AsyncIterable<ChatEvent> | undefined;
+    expect(() => {
+      second = session.send('again');
+    }).not.toThrow();
+    expect(session.busy()).toBe(true);
+
+    for (let r = await first.next(); !r.done; r = await first.next()) { /* drain */ }
+    await drain(second!);
+    expect(session.messages()).toHaveLength(2);
+    expect(session.messages()[1]!.status).toBe('done');
   });
 });
