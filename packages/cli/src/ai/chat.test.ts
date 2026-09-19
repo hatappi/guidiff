@@ -156,7 +156,7 @@ describe('ChatSession', () => {
     expect(session.messages()[3]!.status).toBe('done');
   });
 
-  test('clear drops messages and the provider session', async () => {
+  test('clear drops messages and the provider session, but ids keep increasing', async () => {
     const s = scripted([
       [{ type: 'done', sessionId: 's1' }],
       [{ type: 'done', sessionId: 's2' }],
@@ -167,7 +167,9 @@ describe('ChatSession', () => {
     expect(session.messages()).toEqual([]);
     await drain(session.send('b'));
     expect(s.requests[1]!.sessionId).toBeUndefined();
-    expect(session.messages()[0]!.id).toBe(1);
+    // Ids are never reused across a clear, so a late frame from the turn
+    // before it can never be mistaken for the new turn's message.
+    expect(session.messages()[0]!.id).toBe(3);
   });
 
   test('clear releases the slot immediately too, so sending again right after does not throw', async () => {

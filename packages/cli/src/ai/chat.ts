@@ -58,6 +58,9 @@ export interface ChatSessionOptions {
 
 export class ChatSession {
   #messages: ChatMessage[] = [];
+  // Never reset, even by clear(): a stream started before a clear resolves
+  // this message by id, and a reused id could let it close over the wrong
+  // (new turn's) message.
   #nextId = 1;
   #providerSessionId: string | undefined;
   #inflight: AbortController | null = null;
@@ -130,7 +133,6 @@ export class ChatSession {
   clear(): void {
     this.abort();
     this.#messages = [];
-    this.#nextId = 1;
     this.#providerSessionId = undefined;
   }
 }
