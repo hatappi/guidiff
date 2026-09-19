@@ -2,12 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 
 export default function CommentForm(props: {
+  mode?: 'create' | 'edit';
   initialBody?: string;
   initialSuggestion?: string;
   /** Current text of the commented lines; absent when the range is not suggestable. */
   suggestionBase?: string[] | null;
   onSubmit: (body: string, suggestion?: string) => void;
   onCancel: () => void;
+  /** When given, the form can send its body to the Ask AI panel instead of posting a comment. */
+  onAskAi?: (body: string) => void;
+  /** True while an answer is streaming: the server accepts one question at a time. */
+  askAiDisabled?: boolean;
 }) {
   const [body, setBody] = useState(props.initialBody ?? '');
   // null = no suggestion block on this comment.
@@ -76,8 +81,20 @@ export default function CommentForm(props: {
         )}
         <span className="comment-form-spacer" />
         <button onClick={props.onCancel}>Cancel</button>
+        {props.onAskAi && (
+          <button
+            className="ask-ai-btn"
+            title={props.askAiDisabled
+              ? 'Wait for the current answer to finish'
+              : 'Send this as a question to the Ask AI panel instead of posting a comment'}
+            disabled={body.trim() === '' || props.askAiDisabled}
+            onClick={() => props.onAskAi!(body.trim())}
+          >
+            Ask AI
+          </button>
+        )}
         <button className="primary" disabled={!submittable()} onClick={submit}>
-          {props.initialBody ? 'Save' : 'Add comment'}
+          {props.mode === 'edit' ? 'Save' : 'Add comment'}
         </button>
       </div>
     </div>

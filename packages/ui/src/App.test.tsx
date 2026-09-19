@@ -1,6 +1,6 @@
-import { describe, expect, test, mock } from 'bun:test';
+import { beforeEach, describe, expect, test, mock } from 'bun:test';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { ReviewPayload } from '@guidiff/schema';
+import type { ChatContext, ChatMessage, ChatOptions, ReviewPayload } from '@guidiff/schema';
 import App from './App.tsx';
 
 const payload: ReviewPayload = {
@@ -20,9 +20,16 @@ const payload: ReviewPayload = {
   ],
   comments: [],
   reviewedSections: [],
+  ai: { enabled: false },
 };
 
 let payloadToServe: ReviewPayload;
+let chatToServe: ChatMessage[] = [];
+// Lets a single test make one fetchChat() call hang until released, to
+// reproduce a stale re-fetch racing a newer chat turn.
+let stallNextFetch = false;
+let releaseStalledFetch: (() => void) | null = null;
+let lastOptions: ChatOptions | undefined;
 mock.module('./api.ts', () => ({
   fetchReview: async () => payloadToServe,
   createComment: async () => ({ id: 1 }),
@@ -32,6 +39,36 @@ mock.module('./api.ts', () => ({
   setSectionReviewed: async () => ({}),
   submitReview: async () => ({}),
   cancelReview: async () => ({}),
+  fetchChat: async () => {
+    if (stallNextFetch) {
+      stallNextFetch = false;
+      // Snapshot now: the caller reads it only once released, by which
+      // time chatToServe may have moved on — that's the staleness this
+      // simulates.
+      const stale = chatToServe;
+      await new Promise<void>((resolve) => { releaseStalledFetch = resolve; });
+      return { messages: stale };
+    }
+    return { messages: chatToServe };
+  },
+  // Stateful like the real server: App re-fetches the transcript after every
+  // turn, so the mock must remember what was sent.
+  sendChatMessage: async function* (content: string, context?: ChatContext, options?: ChatOptions) {
+    lastOptions = options;
+    const id = chatToServe.length + 1;
+    const user: ChatMessage = {
+      id, role: 'user', content, status: 'done',
+      ...(context ? { context } : {}),
+      ...(options && (options.model || options.effort) ? { options } : {}),
+    };
+    const assistant: ChatMessage = { id: id + 1, role: 'assistant', content: 'pong', status: 'done' };
+    chatToServe = [...chatToServe, user, assistant];
+    yield { type: 'delta', text: 'po' };
+    yield { type: 'delta', text: 'ng' };
+    yield { type: 'done', message: assistant };
+  },
+  abortChat: async () => ({}),
+  clearChat: async () => { chatToServe = []; return {}; },
 }));
 
 const guidedPayload: ReviewPayload = {
@@ -52,9 +89,14 @@ const guidedPayload: ReviewPayload = {
   ],
   comments: [],
   reviewedSections: [],
+  ai: { enabled: false },
 };
 
+const aiPayload: ReviewPayload = { ...payload, ai: { enabled: true } };
+
 describe('App', () => {
+  beforeEach(() => { localStorage.clear(); lastOptions = undefined; });
+
   test('loads review payload and shows target and files', async () => {
     payloadToServe = payload;
     render(<App />);
@@ -132,6 +174,7 @@ describe('App', () => {
     files: [mkFile('src/a.ts', viewed), mkFile('src/b.ts', viewed)],
     comments: [],
     reviewedSections,
+    ai: { enabled: false },
   });
 
   const sectionCheckbox = (container: HTMLElement) =>
@@ -362,5 +405,124 @@ describe('App', () => {
     await waitFor(() =>
       expect(screen.getByText(/Review submitted/)).toBeTruthy(),
     );
+  });
+
+  test('with ai disabled there is no Ask AI button', async () => {
+    payloadToServe = payload;
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('working tree')).toBeTruthy());
+    expect(screen.queryByText('Ask AI')).toBeNull();
+  });
+
+  test('the header button toggles the chat panel', async () => {
+    payloadToServe = aiPayload;
+    chatToServe = [];
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Ask AI')).toBeTruthy());
+    expect(screen.queryByLabelText('Ask AI')).toBeNull();
+    fireEvent.click(screen.getByText('Ask AI'));
+    expect(screen.getByLabelText('Ask AI')).toBeTruthy();
+    expect(screen.getByText('Ask AI', { selector: 'button' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByLabelText('Close Ask AI'));
+    expect(screen.queryByLabelText('Ask AI')).toBeNull();
+    expect(screen.getByText('Ask AI', { selector: 'button' }).getAttribute('aria-pressed')).toBe('false');
+  });
+
+  test('sending a question streams the answer into the panel', async () => {
+    payloadToServe = aiPayload;
+    chatToServe = [];
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Ask AI')).toBeTruthy());
+    fireEvent.click(screen.getByText('Ask AI'));
+    const input = screen.getByPlaceholderText('Ask about this diff…');
+    fireEvent.change(input, { target: { value: 'why?' } });
+    fireEvent.click(screen.getByText('Send'));
+    await waitFor(() => expect(screen.getByText('pong')).toBeTruthy());
+    expect(screen.getByText('why?')).toBeTruthy();
+  });
+
+  test('Ask AI from a comment form opens the panel with the question and its context', async () => {
+    payloadToServe = aiPayload;
+    chatToServe = [];
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Ask AI')).toBeTruthy());
+    const newLineCell = screen.getAllByText('1').find((el) => el.closest('tr')?.classList.contains('line-add'))!;
+    fireEvent.mouseDown(newLineCell, { button: 0, shiftKey: true });
+    fireEvent.change(screen.getByPlaceholderText('Leave a comment'), { target: { value: 'what is a?' } });
+    fireEvent.click(within(screen.getByPlaceholderText('Leave a comment').closest('.comment-form') as HTMLElement).getByText('Ask AI'));
+    await waitFor(() => expect(screen.getByText('src/a.ts:1')).toBeTruthy());
+    expect(screen.getByText('what is a?')).toBeTruthy();
+    expect(screen.queryByPlaceholderText('Leave a comment')).toBeNull();
+  });
+
+  test('Add as comment opens a prefilled comment form on the question range', async () => {
+    payloadToServe = aiPayload;
+    chatToServe = [
+      { id: 1, role: 'user', content: 'why?', status: 'done', context: { file: 'src/a.ts', side: 'new', startLine: 1, endLine: 1, code: 'const a = 2;' } },
+      { id: 2, role: 'assistant', content: 'Because.', status: 'done' },
+    ];
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Ask AI')).toBeTruthy());
+    fireEvent.click(screen.getByText('Ask AI'));
+    await waitFor(() => expect(screen.getByText('Add as comment')).toBeTruthy());
+    fireEvent.click(screen.getByText('Add as comment'));
+    await waitFor(() => expect((screen.getByPlaceholderText('Leave a comment') as HTMLTextAreaElement).value).toBe('Because.'));
+  });
+
+  test('a stale chat re-fetch does not clobber a newer turn', async () => {
+    payloadToServe = aiPayload;
+    chatToServe = [];
+    stallNextFetch = false;
+    releaseStalledFetch = null;
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Ask AI')).toBeTruthy());
+    fireEvent.click(screen.getByText('Ask AI'));
+
+    // Arm the stall so the first turn's post-stream re-fetch hangs, holding
+    // a transcript snapshot that predates the second turn.
+    stallNextFetch = true;
+    const input = screen.getByPlaceholderText('Ask about this diff…');
+    fireEvent.change(input, { target: { value: 'first' } });
+    fireEvent.click(screen.getByText('Send'));
+    await waitFor(() => expect(screen.getByText('first')).toBeTruthy());
+    await waitFor(() => expect(releaseStalledFetch).toBeTruthy());
+
+    // The first turn's re-fetch is now stuck in flight. Send a second turn
+    // entirely on top of it; its own (unstalled) re-fetch lands normally.
+    fireEvent.change(input, { target: { value: 'second' } });
+    fireEvent.click(screen.getByText('Send'));
+    await waitFor(() => expect(screen.getByText('second')).toBeTruthy());
+
+    // Release the first turn's stale re-fetch. Its snapshot lacks the
+    // second turn; without a generation guard this would wipe it out.
+    releaseStalledFetch!();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(screen.getByText('second')).toBeTruthy();
+  });
+
+  test('the selected model and effort travel with each question and persist', async () => {
+    payloadToServe = aiPayload;
+    chatToServe = [];
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Ask AI')).toBeTruthy());
+    fireEvent.click(screen.getByText('Ask AI'));
+    fireEvent.change(screen.getByLabelText('Model'), { target: { value: 'sonnet' } });
+    fireEvent.change(screen.getByLabelText('Effort'), { target: { value: 'low' } });
+    fireEvent.change(screen.getByPlaceholderText('Ask about this diff…'), { target: { value: 'why?' } });
+    fireEvent.click(screen.getByText('Send'));
+    await waitFor(() => expect(screen.getByText('pong')).toBeTruthy());
+    expect(lastOptions).toEqual({ model: 'sonnet', effort: 'low' });
+    expect(localStorage.getItem('guidiff.chat.model')).toBe('sonnet');
+    expect(localStorage.getItem('guidiff.chat.effort')).toBe('low');
+  });
+
+  test('a stored selection is restored on load', async () => {
+    localStorage.setItem('guidiff.chat.model', 'fable');
+    payloadToServe = aiPayload;
+    chatToServe = [];
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Ask AI')).toBeTruthy());
+    fireEvent.click(screen.getByText('Ask AI'));
+    expect((screen.getByLabelText('Model') as HTMLSelectElement).value).toBe('fable');
   });
 });

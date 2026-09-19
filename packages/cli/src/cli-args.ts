@@ -6,6 +6,7 @@ export interface CliOptions {
   port: number;
   timeoutMin?: number;
   open: boolean;
+  ai: boolean;
 }
 
 export function parseCliArgs(argv: string[]): CliOptions {
@@ -17,6 +18,7 @@ export function parseCliArgs(argv: string[]): CliOptions {
       port: { type: 'string' },
       timeout: { type: 'string' },
       'no-open': { type: 'boolean' },
+      'no-ai': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
       version: { type: 'boolean', short: 'v' },
     },
@@ -33,6 +35,7 @@ export function parseCliArgs(argv: string[]): CliOptions {
     port: values.port ? Number(values.port) : 0,
     ...(values.timeout ? { timeoutMin: Number(values.timeout) } : {}),
     open: !values['no-open'],
+    ai: !values['no-ai'],
   };
 }
 
@@ -55,6 +58,7 @@ Options:
   --port <n>        Fixed port (default: auto-pick a free port)
   --timeout <min>   Give up waiting for Submit after N minutes (default: wait forever)
   --no-open         Do not open the browser automatically
+  --no-ai           Disable the Ask AI chat panel
   -v, --version     Show version
   -h, --help        Show this help
 `;

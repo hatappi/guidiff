@@ -3,18 +3,23 @@ import { parseCliArgs, VersionRequested } from './cli-args.ts';
 
 describe('parseCliArgs', () => {
   test('defaults', () => {
-    expect(parseCliArgs([])).toEqual({ positionals: [], port: 0, open: true });
+    expect(parseCliArgs([])).toEqual({ positionals: [], port: 0, open: true, ai: true });
   });
 
   test('full options', () => {
-    expect(parseCliArgs(['main', 'feature', '--guide', 'g.json', '--port', '3999', '--timeout', '30', '--no-open']))
+    expect(parseCliArgs(['main', 'feature', '--guide', 'g.json', '--port', '3999', '--timeout', '30', '--no-open', '--no-ai']))
       .toEqual({
         positionals: ['main', 'feature'],
         guidePath: 'g.json',
         port: 3999,
         timeoutMin: 30,
         open: false,
+        ai: false,
       });
+  });
+
+  test('--no-ai disables the chat', () => {
+    expect(parseCliArgs(['--no-ai']).ai).toBe(false);
   });
 
   test('rejects unknown flags', () => {

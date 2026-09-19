@@ -48,7 +48,7 @@ test('suggesting prefills the current lines and submits body plus suggestion', (
 test('removing the suggestion submits the body alone', () => {
   const onSubmit = mock(noop);
   render(
-    <CommentForm initialBody="note" initialSuggestion="old" suggestionBase={['x']}
+    <CommentForm mode="edit" initialBody="note" initialSuggestion="old" suggestionBase={['x']}
       onSubmit={onSubmit} onCancel={noop} />,
   );
   expect((screen.getByLabelText('Suggested change') as HTMLTextAreaElement).value).toBe('old');
@@ -94,4 +94,31 @@ test('ctrl+enter submits; plain enter and empty body do not', () => {
   expect(onSubmit).not.toHaveBeenCalled();
   fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
   expect(onSubmit).toHaveBeenCalledWith('hi');
+});
+
+test('a drafted body in create mode still reads Add comment', () => {
+  render(<CommentForm initialBody="draft from chat" onSubmit={noop} onCancel={noop} />);
+  expect(screen.getByText('Add comment')).toBeTruthy();
+  expect(screen.queryByText('Save')).toBeNull();
+});
+
+test('Ask AI appears only with a handler and sends the trimmed body without submitting', () => {
+  const onSubmit = mock(noop);
+  const onAskAi = mock(noop);
+  const { rerender } = render(<CommentForm onSubmit={onSubmit} onCancel={noop} />);
+  expect(screen.queryByText('Ask AI')).toBeNull();
+  rerender(<CommentForm onSubmit={onSubmit} onCancel={noop} onAskAi={onAskAi} />);
+  const ask = screen.getByText('Ask AI') as HTMLButtonElement;
+  expect(ask.disabled).toBe(true);
+  fireEvent.change(screen.getByPlaceholderText('Leave a comment'), { target: { value: '  what is this?  ' } });
+  expect(ask.disabled).toBe(false);
+  fireEvent.click(ask);
+  expect(onAskAi).toHaveBeenCalledWith('what is this?');
+  expect(onSubmit).not.toHaveBeenCalled();
+});
+
+test('Ask AI stays disabled while an answer is streaming', () => {
+  render(<CommentForm onSubmit={noop} onCancel={noop} onAskAi={noop} askAiDisabled />);
+  fireEvent.change(screen.getByPlaceholderText('Leave a comment'), { target: { value: 'q' } });
+  expect((screen.getByText('Ask AI') as HTMLButtonElement).disabled).toBe(true);
 });

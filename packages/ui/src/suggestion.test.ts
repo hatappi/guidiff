@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import type { Hunk } from '@guidiff/schema';
-import { newSideLines, suggestionLines } from './suggestion.ts';
+import { newSideLines, sideLines, suggestionLines } from './suggestion.ts';
 
 const hunks: Hunk[] = [
   { header: '@@ -1,2 +1,3 @@', lines: [
@@ -28,4 +28,15 @@ test('returns null when the range is not fully covered by the diff', () => {
 test('an empty suggestion renders as no lines (a deletion)', () => {
   expect(suggestionLines('')).toEqual([]);
   expect(suggestionLines('x\ny')).toEqual(['x', 'y']);
+});
+
+test('sideLines returns the visible text of a range on either side, skipping gaps', () => {
+  const hunks = [{ header: '@@', lines: [
+    { type: 'del' as const, oldLine: 1, text: 'old one' },
+    { type: 'add' as const, newLine: 1, text: 'new one' },
+    { type: 'context' as const, oldLine: 2, newLine: 2, text: 'same' },
+  ] }];
+  expect(sideLines(hunks, 'new', 1, 2)).toEqual(['new one', 'same']);
+  expect(sideLines(hunks, 'old', 1, 2)).toEqual(['old one', 'same']);
+  expect(sideLines(hunks, 'new', 1, 9)).toEqual(['new one', 'same']);
 });

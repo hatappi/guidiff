@@ -1,6 +1,9 @@
 #!/usr/bin/env bun
 import { GuideSchema, type Guide } from '@guidiff/schema';
 import indexHtml from '@guidiff/ui/index.html';
+import { mkdir, unlink } from 'node:fs/promises';
+import { join } from 'node:path';
+import { ClaudeCliProvider } from './ai/claude-cli.ts';
 import { HelpRequested, parseCliArgs, USAGE, VersionRequested } from './cli-args.ts';
 import { VERSION } from './version.ts';
 import { collectDiff, type DiffSpec, getGitDir, getRepoRoot, resolveDiffSpec } from './git.ts';
@@ -77,8 +80,24 @@ async function main(): Promise<number> {
   const state = await loadState(gitDir);
   const fileStates = reconcileFiles(state, files);
 
+  const aiEnabled = opts.ai && Bun.which('claude') !== null;
+  if (opts.ai && !aiEnabled) log('guidiff: Ask AI disabled (claude CLI not found on PATH)');
+  let patchPath: string | null = null;
+  if (aiEnabled) {
+    // The model reads the diff from disk instead of receiving it inline, so
+    // large diffs never blow up the prompt.
+    patchPath = join(gitDir, 'guidiff', `chat-diff-${process.pid}.patch`);
+    try {
+      await mkdir(join(gitDir, 'guidiff'), { recursive: true });
+      await Bun.write(patchPath, files.map((f) => f.patch).join('\n'));
+    } catch (e) {
+      log(`guidiff: could not write the diff for Ask AI: ${e instanceof Error ? e.message : String(e)}`);
+      patchPath = null;
+    }
+  }
+
   const target = spec.kind === 'worktree' ? 'working tree' : spec.label;
-  const { server, url, outcome } = startServer({
+  const { server, url, outcome, dispose } = startServer({
     port: opts.port,
     target,
     guide,
@@ -87,6 +106,9 @@ async function main(): Promise<number> {
     gitDir,
     state,
     staticRoutes: { '/': indexHtml },
+    ...(aiEnabled
+      ? { ai: { provider: new ClaudeCliProvider(), cwd: repoRoot, patchPath, isPullRequest: spec.kind === 'pr' } }
+      : {}),
   });
 
   log(`guidiff: listening on ${url}`);
@@ -111,9 +133,11 @@ async function main(): Promise<number> {
 
   const final = await raced;
   for (const t of timers) clearTimeout(t);
+  dispose();
   // Give the in-flight HTTP response a beat to flush before stopping.
   await Bun.sleep(50);
   server.stop(true);
+  if (patchPath) await unlink(patchPath).catch(() => {});
 
   if (final.type === 'submit') {
     console.log(JSON.stringify(final.result, null, 2)); // the ONLY stdout write
