@@ -164,7 +164,7 @@ export function startServer(opts: ServerOptions) {
         GET: () => (chat ? json({ messages: chat.messages() }) : aiDisabled()),
       },
       '/api/chat/messages': {
-        POST: async (req: Request) => {
+        POST: async (req: Request, server: Bun.Server<undefined>) => {
           if (!chat) return aiDisabled();
           let body: z.infer<typeof ChatSendSchema>;
           try {
@@ -220,6 +220,10 @@ export function startServer(opts: ServerOptions) {
               void events.return?.(undefined);
             },
           });
+          // The model may stay silent past Bun's 10s idle default before its
+          // first token (it reads the patch and thinks); the turn is bounded
+          // by abort/dispose, not by the socket, so exempt this request.
+          server.timeout(req, 0);
           return new Response(stream, {
             headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' },
           });

@@ -427,4 +427,25 @@ describe('chat api', () => {
     const transcript = await (await fetch(`${url}/api/chat`)).json();
     expect(transcript.messages[1].status).toBe('aborted');
   });
+
+  // Deliberately spans Bun's 10s idle default: the first delta arrives after
+  // 15s of real silence on the connection, reproducing the request timeout
+  // that server.timeout(req, 0) is meant to prevent. Bun sweeps idle
+  // connections on a coarse tick rather than the instant the default
+  // elapses (measured: a request killed at ~12s wall-clock even though the
+  // nominal default is 10s), so 15s leaves margin instead of racing the tick.
+  test('the stream survives a 15 second silence before the first delta', async () => {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const { url, release } = bootWithAi(gitDir, [
+      [{ type: 'delta', text: '<wait>' }, { type: 'delta', text: 'slow' }, { type: 'done', sessionId: 's1' }],
+    ]);
+    const first = fetch(`${url}/api/chat/messages`, { method: 'POST', body: '{"content":"a"}' });
+    await new Promise((r) => setTimeout(r, 15_000));
+    release();
+    const events = parseSse(await (await first).text());
+    expect(events).toEqual([
+      { event: 'delta', data: { text: 'slow' } },
+      { event: 'done', data: { message: { id: 2, role: 'assistant', content: 'slow', status: 'done' } } },
+    ]);
+  }, 20_000);
 });
