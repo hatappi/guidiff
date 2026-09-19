@@ -172,6 +172,18 @@ describe('ChatSession', () => {
     expect(session.messages()[0]!.id).toBe(3);
   });
 
+  test('options are stored on the user message and forwarded to the provider', async () => {
+    const s = scripted([[{ type: 'done', sessionId: 's1' }], [{ type: 'done', sessionId: 's1' }]]);
+    const session = new ChatSession(opts(s.provider));
+    await drain(session.send('a', undefined, { model: 'sonnet', effort: 'low' }));
+    expect(session.messages()[0]).toEqual({ id: 1, role: 'user', content: 'a', status: 'done', options: { model: 'sonnet', effort: 'low' } });
+    expect(s.requests[0]!.model).toBe('sonnet');
+    expect(s.requests[0]!.effort).toBe('low');
+    await drain(session.send('b'));
+    expect(session.messages()[2]!.options).toBeUndefined();
+    expect(s.requests[1]!.model).toBeUndefined();
+  });
+
   test('clear releases the slot immediately too, so sending again right after does not throw', async () => {
     const s = scripted([
       [{ type: 'delta', text: 'par' }, { type: 'delta', text: '<wait>' }, { type: 'done', sessionId: 's1' }],

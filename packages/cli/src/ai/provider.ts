@@ -1,3 +1,5 @@
+import type { ChatEffort, ChatModel } from '@guidiff/schema';
+
 export type ChatEvent =
   | { type: 'delta'; text: string }
   | { type: 'done'; sessionId: string }
@@ -13,6 +15,9 @@ export interface ChatRequest {
   // Extra directories the model may read (restricted mode confines file
   // tools to cwd otherwise).
   addDirs?: string[];
+  // Per-turn overrides; absent means the CLI default.
+  model?: ChatModel;
+  effort?: ChatEffort;
   // Aborting kills the underlying process and ends the event stream.
   signal: AbortSignal;
 }

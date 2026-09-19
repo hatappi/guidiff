@@ -48,6 +48,14 @@ describe('buildClaudeArgs', () => {
     const args = buildClaudeArgs({ ...base, addDirs: ['/repo/.git/guidiff'], sessionId: 's1' });
     expect(args.slice(-4)).toEqual(['--add-dir', '/repo/.git/guidiff', '--resume', 's1']);
   });
+
+  test('model and effort are passed through only when given', () => {
+    expect(buildClaudeArgs(base)).not.toContain('--model');
+    expect(buildClaudeArgs(base)).not.toContain('--effort');
+    const args = buildClaudeArgs({ ...base, model: 'opus', effort: 'high' });
+    const i = args.indexOf('--append-system-prompt');
+    expect(args.slice(i + 2, i + 6)).toEqual(['--model', 'opus', '--effort', 'high']);
+  });
 });
 
 function fakeSpawn(lines: string[], opts: { exitCode?: number; stderr?: string; chunked?: boolean } = {}) {

@@ -1,4 +1,6 @@
 import {
+  CHAT_EFFORTS,
+  CHAT_MODELS,
   ReviewCommentSchema,
   ReviewResultSchema,
   VerdictSchema,
@@ -51,6 +53,8 @@ const ChatContextSchema = z.object({
 const ChatSendSchema = z.object({
   content: z.string().trim().min(1),
   context: ChatContextSchema.optional(),
+  model: z.enum(CHAT_MODELS).optional(),
+  effort: z.enum(CHAT_EFFORTS).optional(),
 });
 
 export function startServer(opts: ServerOptions) {
@@ -174,7 +178,10 @@ export function startServer(opts: ServerOptions) {
           }
           let events: AsyncIterator<ChatEvent>;
           try {
-            events = chat.send(body.content, body.context)[Symbol.asyncIterator]();
+            events = chat.send(body.content, body.context, {
+              ...(body.model ? { model: body.model } : {}),
+              ...(body.effort ? { effort: body.effort } : {}),
+            })[Symbol.asyncIterator]();
           } catch (e) {
             if (e instanceof BusyError) return json({ error: e.message }, 409);
             throw e;

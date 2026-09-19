@@ -27,6 +27,8 @@ export function buildClaudeArgs(req: ChatRequest): string[] {
     '--restricted', '--strict-mcp-config', '--tools', READ_ONLY_TOOLS,
     '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
     '--append-system-prompt', req.systemPrompt,
+    ...(req.model ? ['--model', req.model] : []),
+    ...(req.effort ? ['--effort', req.effort] : []),
     ...(req.addDirs ?? []).flatMap((d) => ['--add-dir', d]),
     ...(req.sessionId ? ['--resume', req.sessionId] : []),
   ];

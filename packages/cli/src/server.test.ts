@@ -262,7 +262,7 @@ describe('review api', () => {
 });
 
 function bootWithAi(gitDir: string, scripts: ChatEvent[][]) {
-  const requests: Array<{ prompt: string; sessionId?: string; addDirs?: string[] }> = [];
+  const requests: Array<{ prompt: string; sessionId?: string; addDirs?: string[]; model?: string; effort?: string }> = [];
   let release: (() => void) | null = null;
   const provider: ChatProvider = {
     async *ask(req) {
@@ -270,6 +270,8 @@ function bootWithAi(gitDir: string, scripts: ChatEvent[][]) {
         prompt: req.prompt,
         ...(req.sessionId ? { sessionId: req.sessionId } : {}),
         ...(req.addDirs ? { addDirs: req.addDirs } : {}),
+        model: req.model,
+        effort: req.effort,
       });
       for (const ev of scripts.shift() ?? []) {
         if (ev.type === 'delta' && ev.text === '<wait>') {
@@ -349,6 +351,18 @@ describe('chat api', () => {
     const { url } = bootWithAi(gitDir, []);
     expect((await fetch(`${url}/api/chat/messages`, { method: 'POST', body: '{"content":"   "}' })).status).toBe(400);
     expect((await fetch(`${url}/api/chat/messages`, { method: 'POST', body: 'nope' })).status).toBe(400);
+  });
+
+  test('model and effort are validated and passed to the provider', async () => {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const { url, requests } = bootWithAi(gitDir, [[{ type: 'done', sessionId: 's1' }]]);
+    expect((await fetch(`${url}/api/chat/messages`, { method: 'POST', body: '{"content":"a","model":"gpt"}' })).status).toBe(400);
+    expect((await fetch(`${url}/api/chat/messages`, { method: 'POST', body: '{"content":"a","effort":"ultra"}' })).status).toBe(400);
+    await (await fetch(`${url}/api/chat/messages`, { method: 'POST', body: '{"content":"a","model":"haiku","effort":"max"}' })).text();
+    expect(requests[0]!.model).toBe('haiku');
+    expect(requests[0]!.effort).toBe('max');
+    const transcript = await (await fetch(`${url}/api/chat`)).json();
+    expect(transcript.messages[0].options).toEqual({ model: 'haiku', effort: 'max' });
   });
 
   test('a second message while streaming is 409; abort ends the first as aborted', async () => {

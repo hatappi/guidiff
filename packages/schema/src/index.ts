@@ -125,6 +125,17 @@ export interface StoredComment extends ReviewComment {
 
 // ---- Ask AI chat (cli -> ui; never part of the review result) ----
 
+export const CHAT_MODELS = ['sonnet', 'opus', 'fable', 'haiku'] as const;
+export const CHAT_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'] as const;
+export type ChatModel = (typeof CHAT_MODELS)[number];
+export type ChatEffort = (typeof CHAT_EFFORTS)[number];
+
+// Per-turn overrides for the claude subprocess; absent means the CLI default.
+export interface ChatOptions {
+  model?: ChatModel;
+  effort?: ChatEffort;
+}
+
 export interface ChatContext {
   file: string;
   side?: 'new' | 'old';
@@ -140,6 +151,8 @@ export interface ChatMessage {
   content: string;
   // User messages only: what the question was asked about.
   context?: ChatContext;
+  // User messages only: what the question was asked with.
+  options?: ChatOptions;
   status: 'streaming' | 'done' | 'aborted' | 'error';
   // Set when status is 'error'.
   error?: string;

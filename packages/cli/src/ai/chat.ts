@@ -1,4 +1,4 @@
-import type { ChatContext, ChatMessage, FileDiff, Guide } from '@guidiff/schema';
+import type { ChatContext, ChatMessage, ChatOptions, FileDiff, Guide } from '@guidiff/schema';
 import type { ChatEvent, ChatProvider } from './provider.ts';
 
 export function buildPrompt(content: string, context?: ChatContext): string {
@@ -75,19 +75,23 @@ export class ChatSession {
     return this.#inflight !== null;
   }
 
-  send(content: string, context?: ChatContext): AsyncIterable<ChatEvent> {
+  send(content: string, context?: ChatContext, options?: ChatOptions): AsyncIterable<ChatEvent> {
     if (this.#inflight) throw new BusyError();
+    const chosen = options && (options.model || options.effort) ? options : undefined;
     const user: ChatMessage = {
-      id: this.#nextId++, role: 'user', content, ...(context ? { context } : {}), status: 'done',
+      id: this.#nextId++, role: 'user', content,
+      ...(context ? { context } : {}),
+      ...(chosen ? { options: chosen } : {}),
+      status: 'done',
     };
     const assistant: ChatMessage = { id: this.#nextId++, role: 'assistant', content: '', status: 'streaming' };
     this.#messages.push(user, assistant);
     const controller = new AbortController();
     this.#inflight = controller;
-    return this.#run(assistant, buildPrompt(content, context), controller);
+    return this.#run(assistant, buildPrompt(content, context), chosen, controller);
   }
 
-  async *#run(assistant: ChatMessage, prompt: string, controller: AbortController): AsyncGenerator<ChatEvent> {
+  async *#run(assistant: ChatMessage, prompt: string, options: ChatOptions | undefined, controller: AbortController): AsyncGenerator<ChatEvent> {
     try {
       const events = this.opts.provider.ask({
         prompt,
@@ -95,6 +99,8 @@ export class ChatSession {
         ...(this.#providerSessionId ? { sessionId: this.#providerSessionId } : {}),
         cwd: this.opts.cwd,
         ...(this.opts.addDirs ? { addDirs: this.opts.addDirs } : {}),
+        ...(options?.model ? { model: options.model } : {}),
+        ...(options?.effort ? { effort: options.effort } : {}),
         signal: controller.signal,
       });
       for await (const ev of events) {
