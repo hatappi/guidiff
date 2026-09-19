@@ -48,3 +48,11 @@ test('chat markdown renders fences, headings and links but escapes raw html', ()
   expect(html).toContain('<a href="https://example.com">docs</a>');
   expect(html).toContain('&lt;b&gt;x&lt;/b&gt;');
 });
+
+test('chat markdown never renders an image, so remote urls cannot beacon out on load', () => {
+  const html = renderChatMarkdown('![i](http://evil/x.png)');
+  expect(html).not.toContain('<img');
+  // The image rule is disabled, not the link rule: "![i](url)" falls back to
+  // a literal "!" followed by a plain link, which needs a click to leak.
+  expect(html).toContain('!<a href="http://evil/x.png">i</a>');
+});
