@@ -28,3 +28,19 @@ export function newSideLines(hunks: Hunk[], start: number, end: number): string[
 /** Suggestion text as rendered lines; an empty suggestion deletes the range. */
 export const suggestionLines = (suggestion: string): string[] =>
   suggestion === '' ? [] : suggestion.split('\n');
+
+/**
+ * Text of the lines `start..end` on one side, in order, for quoting to the
+ * chat. Unlike newSideLines a partial range is fine: whatever the diff shows
+ * is still useful context.
+ */
+export function sideLines(hunks: Hunk[], side: 'new' | 'old', start: number, end: number): string[] {
+  const byLine = new Map<number, string>();
+  for (const hunk of hunks) {
+    for (const line of hunk.lines) {
+      const n = side === 'new' ? line.newLine : line.oldLine;
+      if (n !== undefined && n >= start && n <= end) byLine.set(n, line.text);
+    }
+  }
+  return [...byLine.entries()].sort((a, b) => a[0] - b[0]).map(([, text]) => text);
+}

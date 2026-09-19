@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
-import type { DiffLine, ReviewComment, ReviewPayload, StoredComment } from '@guidiff/schema';
+import type { ChatContext, DiffLine, ReviewComment, ReviewPayload, StoredComment } from '@guidiff/schema';
 import { buildSplitRows } from '../split.ts';
-import { newSideLines } from '../suggestion.ts';
+import { newSideLines, sideLines } from '../suggestion.ts';
+import type { CommentDraft } from '../draft.ts';
 import { CodeCell } from './DiffLines.tsx';
 import CommentForm from './CommentForm.tsx';
 import CommentThread from './CommentThread.tsx';
@@ -17,6 +18,10 @@ export interface FileDiffViewProps {
   onAddComment: (c: ReviewComment) => void;
   onUpdateComment: (id: number, body: string, suggestion?: string | null) => void;
   onDeleteComment: (id: number) => void;
+  onAskAi?: (context: ChatContext, question: string) => void;
+  askAiDisabled?: boolean;
+  draft?: CommentDraft | null;
+  onDraftConsumed?: () => void;
 }
 
 type LineKey = { side: 'new' | 'old'; line: number };
@@ -38,6 +43,7 @@ export default function FileDiffView(props: FileDiffViewProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [fileFormOpen, setFileFormOpen] = useState(false);
+  const [draftBody, setDraftBody] = useState<string | null>(null);
   const dragAnchor = useRef<LineKey | null>(null);
   const fileComments = props.comments.filter((c) => c.startLine === undefined);
 
@@ -56,6 +62,17 @@ export default function FileDiffView(props: FileDiffViewProps) {
     document.addEventListener('mouseup', onUp);
     return () => document.removeEventListener('mouseup', onUp);
   }, [dragging]);
+
+  // A draft arriving from the chat panel opens the form exactly as a
+  // shift-click on that range would, with the answer as the starting body.
+  useEffect(() => {
+    const d = props.draft;
+    if (!d || d.file !== file.path) return;
+    setSelection({ side: d.side, start: d.startLine, end: d.endLine });
+    setDraftBody(d.body);
+    setFormOpen(true);
+    props.onDraftConsumed?.();
+  }, [props.draft]);
 
   const beginSelect = (key: LineKey | null, shiftKey: boolean) => {
     if (!key) return;
@@ -106,6 +123,25 @@ export default function FileDiffView(props: FileDiffViewProps) {
     });
     setFormOpen(false);
     setSelection(null);
+    setDraftBody(null);
+  };
+
+  const askAiFromSelection = (question: string) => {
+    if (!selection || !props.onAskAi) return;
+    const code = sideLines(file.hunks, selection.side, selection.start, selection.end).join('\n');
+    props.onAskAi({
+      file: file.path,
+      side: selection.side,
+      startLine: selection.start,
+      endLine: selection.end,
+      ...(code === '' ? {} : { code }),
+    }, question);
+    cancelComment();
+  };
+
+  const askAiAboutFile = (question: string) => {
+    props.onAskAi?.({ file: file.path }, question);
+    setFileFormOpen(false);
   };
 
   // Suggestions replace lines of the post-change file, so they are offered only
@@ -126,6 +162,7 @@ export default function FileDiffView(props: FileDiffViewProps) {
   const cancelComment = () => {
     setFormOpen(false);
     setSelection(null);
+    setDraftBody(null);
   };
 
   return (
@@ -156,7 +193,12 @@ export default function FileDiffView(props: FileDiffViewProps) {
         {/* Anchored to the sticky header so the form stays visible mid-scroll. */}
         {!file.state.viewed && fileFormOpen && (
           <div className="file-comment-popover">
-            <CommentForm onSubmit={submitFileComment} onCancel={() => setFileFormOpen(false)} />
+            <CommentForm
+              onSubmit={submitFileComment}
+              onCancel={() => setFileFormOpen(false)}
+              onAskAi={props.onAskAi ? askAiAboutFile : undefined}
+              askAiDisabled={props.askAiDisabled}
+            />
           </div>
         )}
       </div>
@@ -201,9 +243,13 @@ export default function FileDiffView(props: FileDiffViewProps) {
                       {showForm && (
                         <tr className="inline-row"><td colSpan={3}>
                           <CommentForm
+                            key={draftBody ?? ''}
+                            initialBody={draftBody ?? undefined}
                             suggestionBase={selectionBase}
                             onSubmit={submitComment}
                             onCancel={cancelComment}
+                            onAskAi={props.onAskAi ? askAiFromSelection : undefined}
+                            askAiDisabled={props.askAiDisabled}
                           />
                         </td></tr>
                       )}
@@ -262,9 +308,13 @@ export default function FileDiffView(props: FileDiffViewProps) {
                       {showForm && (
                         <tr className="inline-row"><td colSpan={4}>
                           <CommentForm
+                            key={draftBody ?? ''}
+                            initialBody={draftBody ?? undefined}
                             suggestionBase={selectionBase}
                             onSubmit={submitComment}
                             onCancel={cancelComment}
+                            onAskAi={props.onAskAi ? askAiFromSelection : undefined}
+                            askAiDisabled={props.askAiDisabled}
                           />
                         </td></tr>
                       )}
