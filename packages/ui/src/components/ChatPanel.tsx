@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import type { ChatMessage } from '@guidiff/schema';
 import { renderChatMarkdown } from '../markdown.ts';
+import { CHAT_RESIZE } from '../resize.ts';
+import ResizeHandle from './ResizeHandle.tsx';
 
 export interface ChatPanelProps {
   messages: ChatMessage[];
@@ -46,6 +48,7 @@ export default function ChatPanel(props: ChatPanelProps) {
 
   return (
     <aside className="chat-panel" aria-label="Ask AI">
+      <ResizeHandle spec={CHAT_RESIZE} ariaLabel="Resize Ask AI panel" />
       <div className="chat-header">
         <h2>Ask AI</h2>
         <span className="comment-form-spacer" />

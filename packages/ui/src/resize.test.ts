@@ -1,10 +1,18 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import {
+  CHAT_RESIZE,
+  GUIDE_RESIZE,
   MIN_GUIDE_WIDTH,
   clampGuideWidth,
+  clampWidth,
+  defaultWidth,
   getGuideWidth,
+  getWidth,
+  maxWidth,
   resetGuideWidth,
+  resetWidth,
   setGuideWidth,
+  setWidth,
 } from './resize.ts';
 
 describe('clampGuideWidth', () => {
@@ -62,5 +70,36 @@ describe('getGuideWidth / setGuideWidth', () => {
     setGuideWidth(300);
     expect(resetGuideWidth()).toBe(358);
     expect(document.documentElement.style.getPropertyValue('--guide-w')).toBe('');
+  });
+});
+
+describe('spec-driven widths', () => {
+  beforeEach(() => {
+    document.documentElement.style.removeProperty('--guide-w');
+    document.documentElement.style.removeProperty('--chat-w');
+  });
+
+  test('GUIDE_RESIZE reproduces the legacy guide behaviour', () => {
+    expect(defaultWidth(GUIDE_RESIZE, 1024)).toBe(358);
+    expect(maxWidth(GUIDE_RESIZE, 1024)).toBe(512);
+    expect(clampWidth(GUIDE_RESIZE, 100, 1024)).toBe(200);
+    expect(clampWidth(GUIDE_RESIZE, 5000, 1024)).toBe(512);
+  });
+
+  test('CHAT_RESIZE has a pixel default and a hard max under the viewport cap', () => {
+    expect(defaultWidth(CHAT_RESIZE, 1024)).toBe(400);
+    expect(maxWidth(CHAT_RESIZE, 1024)).toBe(512);
+    expect(maxWidth(CHAT_RESIZE, 4000)).toBe(800);
+    expect(clampWidth(CHAT_RESIZE, 100, 1024)).toBe(280);
+  });
+
+  test('get/set/reset work per variable without touching the other', () => {
+    expect(getWidth(CHAT_RESIZE)).toBe(400);
+    expect(setWidth(CHAT_RESIZE, 450)).toBe(450);
+    expect(document.documentElement.style.getPropertyValue('--chat-w')).toBe('450px');
+    expect(document.documentElement.style.getPropertyValue('--guide-w')).toBe('');
+    expect(getWidth(GUIDE_RESIZE)).toBe(358);
+    expect(resetWidth(CHAT_RESIZE)).toBe(400);
+    expect(document.documentElement.style.getPropertyValue('--chat-w')).toBe('');
   });
 });

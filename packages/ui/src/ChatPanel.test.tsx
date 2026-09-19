@@ -85,3 +85,8 @@ test('Clear is disabled on an empty transcript; Clear and close call their handl
   expect(onClear).toHaveBeenCalled();
   expect(onClose).toHaveBeenCalled();
 });
+
+test('the panel has its own resize handle', () => {
+  render(<ChatPanel {...base} messages={[]} />);
+  expect(screen.getByLabelText('Resize Ask AI panel')).toBeTruthy();
+});

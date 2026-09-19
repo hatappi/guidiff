@@ -301,6 +301,9 @@ button.anchor-link:hover { background: none; text-decoration: underline; }
   display: flex; flex-direction: column; min-width: 0;
   background: var(--bg); border-left: 1px solid var(--border);
 }
+/* The panel's handle sits on its own left edge; the base rule positions the
+   guide handle on the --guide-w edge instead. */
+.chat-panel .resize-handle { left: 0; margin-left: -3px; }
 .chat-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
 .chat-header h2 { font-size: 14px; margin: 0; }
 .chat-messages { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
@@ -333,6 +336,6 @@ button.anchor-link:hover { background: none; text-decoration: underline; }
 /* Two-column shell: review body on the left, Ask AI panel on the right. The
    sticky header spans both so --header-h stays correct for the panel. */
 .app { display: grid; grid-template-columns: minmax(0, 1fr); }
-.app[data-chat-open] { grid-template-columns: minmax(0, 1fr) 400px; }
+.app[data-chat-open] { grid-template-columns: minmax(0, 1fr) var(--chat-w, 400px); }
 .app-header { grid-column: 1 / -1; }
 .app > .sections, .app > .layout { grid-column: 1; min-width: 0; }

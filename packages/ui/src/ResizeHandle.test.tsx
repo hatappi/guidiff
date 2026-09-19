@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
 import { fireEvent, render } from '@testing-library/react';
 import ResizeHandle from './components/ResizeHandle.tsx';
+import { CHAT_RESIZE } from './resize.ts';
 
 const guideVar = () => document.documentElement.style.getPropertyValue('--guide-w');
 
@@ -134,5 +135,42 @@ describe('ResizeHandle', () => {
 
     fireEvent.pointerMove(handle, { pointerId: 1, clientX: 420 });
     expect(document.documentElement.style.getPropertyValue('--guide-w')).toBe('');
+  });
+});
+
+describe('ResizeHandle for the chat panel', () => {
+  const chatVar = () => document.documentElement.style.getPropertyValue('--chat-w');
+  beforeEach(() => {
+    document.documentElement.style.removeProperty('--chat-w');
+  });
+
+  test('dragging left widens a right-anchored panel', () => {
+    const { getByRole } = render(<ResizeHandle spec={CHAT_RESIZE} ariaLabel="Resize Ask AI panel" />);
+    const handle = getByRole('separator');
+    expect(handle.getAttribute('aria-label')).toBe('Resize Ask AI panel');
+    expect(handle.getAttribute('aria-valuemin')).toBe('280');
+    expect(handle.getAttribute('aria-valuenow')).toBe('400');
+    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 600 });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 550 });
+    expect(chatVar()).toBe('450px');
+    fireEvent.pointerUp(handle, { pointerId: 1 });
+  });
+
+  test('ArrowLeft widens and ArrowRight narrows the chat panel', () => {
+    const { getByRole } = render(<ResizeHandle spec={CHAT_RESIZE} />);
+    const handle = getByRole('separator');
+    fireEvent.keyDown(handle, { key: 'ArrowLeft' });
+    expect(chatVar()).toBe('416px');
+    fireEvent.keyDown(handle, { key: 'ArrowRight' });
+    expect(chatVar()).toBe('400px');
+  });
+
+  test('double-click resets the chat panel to its default', () => {
+    const { getByRole } = render(<ResizeHandle spec={CHAT_RESIZE} />);
+    const handle = getByRole('separator');
+    document.documentElement.style.setProperty('--chat-w', '500px');
+    fireEvent.doubleClick(handle);
+    expect(chatVar()).toBe('');
+    expect(handle.getAttribute('aria-valuenow')).toBe('400');
   });
 });
