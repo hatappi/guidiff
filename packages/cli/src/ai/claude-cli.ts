@@ -94,7 +94,15 @@ export class ClaudeCliProvider implements ChatProvider {
 
   async *ask(req: ChatRequest): AsyncIterable<ChatEvent> {
     if (req.signal.aborted) return;
-    const proc = this.spawn([this.bin, ...buildClaudeArgs(req)], { cwd: req.cwd, stdin: req.prompt });
+    let proc: SpawnedProcess;
+    try {
+      proc = this.spawn([this.bin, ...buildClaudeArgs(req)], { cwd: req.cwd, stdin: req.prompt });
+    } catch (e) {
+      // A failed spawn (e.g. ENOENT) throws before any stream exists, so it's
+      // the one failure not caught by the loop below; surface it the same way.
+      yield { type: 'error', message: `could not start ${this.bin}: ${e instanceof Error ? e.message : String(e)}` };
+      return;
+    }
     const onAbort = () => proc.kill();
     req.signal.addEventListener('abort', onAbort, { once: true });
     const stderr = readAll(proc.stderr);

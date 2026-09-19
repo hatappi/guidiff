@@ -108,4 +108,10 @@ describe('ClaudeCliProvider', () => {
     expect(rest).toEqual([]);
     expect(f.killed()).toBe(true);
   });
+
+  test('a spawn that throws synchronously (e.g. ENOENT) yields an error event instead of rejecting', async () => {
+    const spawn: SpawnFn = () => { throw new Error('ENOENT'); };
+    const events = await collect(new ClaudeCliProvider(spawn).ask(req));
+    expect(events).toEqual([{ type: 'error', message: 'could not start claude: ENOENT' }]);
+  });
 });
