@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.2.15](https://github.com/hatappi/guidiff/compare/v0.2.14...v0.2.15) - 2026-09-19
+
+- feat: Ask AI chat panel backed by the local claude CLI by @hatappi in https://github.com/hatappi/guidiff/pull/54
+
 ## [v0.2.14](https://github.com/hatappi/guidiff/compare/v0.2.13...v0.2.14) - 2026-09-17
 
 - feat(ui): default the guide pane to 35% of the viewport by @hatappi in https://github.com/hatappi/guidiff/pull/52
