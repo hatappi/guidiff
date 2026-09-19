@@ -59,6 +59,18 @@ diff, whatever the target. To get a guided review of a pull request, ask Claude
 Exit codes: `0` submitted (result JSON on stdout) / `1` error / `2` cancelled.
 stdout carries **only** the result JSON; all logs go to stderr.
 
+### Ask AI
+
+The review UI has an **Ask AI** panel backed by the local `claude` CLI. Open it
+from the header, or write a question in any comment form and press **Ask AI**
+to send that comment's file, line range and code as context instead of
+posting it as a review comment. Answers to line-anchored questions offer
+**Add as comment**, which opens a comment form on those lines with the answer
+as a draft.
+
+The chat is a reading aid: it is never included in the review result. It
+requires `claude` on `PATH` and is disabled with `--no-ai`.
+
 ## Claude Code plugin
 
 ```

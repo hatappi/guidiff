@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -98,5 +98,37 @@ describe('guidiff e2e', () => {
     expect(await proc.exited).toBe(1);
     expect(await new Response(proc.stderr).text()).toContain('invalid guide JSON');
     expect(await new Response(proc.stdout).text()).toBe('');
+  });
+
+  test('--no-ai reports the chat as disabled and 404s the chat routes', async () => {
+    const repo = makeRepo();
+    const proc = Bun.spawn([process.execPath, CLI, '--no-open', '--no-ai'], {
+      cwd: repo, stdin: 'ignore', stdout: 'pipe', stderr: 'pipe',
+    });
+    const url = await readUrlFromStderr(proc);
+    const payload = await (await fetch(`${url}/api/review`)).json();
+    expect(payload.ai).toEqual({ enabled: false });
+    expect((await fetch(`${url}/api/chat`)).status).toBe(404);
+    await fetch(`${url}/api/cancel`, { method: 'POST' });
+    expect(await proc.exited).toBe(2);
+  });
+
+  test('with the chat enabled the diff is written to a patch file and removed on exit', async () => {
+    const repo = makeRepo();
+    // A fake `claude` on PATH is enough for detection; it is never run here.
+    const bin = mkdtempSync(join(tmpdir(), 'guidiff-bin-'));
+    writeFileSync(join(bin, 'claude'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+    const proc = Bun.spawn([process.execPath, CLI, '--no-open'], {
+      cwd: repo, stdin: 'ignore', stdout: 'pipe', stderr: 'pipe',
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+    });
+    const url = await readUrlFromStderr(proc);
+    expect((await (await fetch(`${url}/api/review`)).json()).ai).toEqual({ enabled: true });
+    const patches = readdirSync(join(repo, '.git', 'guidiff')).filter((f) => f.startsWith('chat-diff-'));
+    expect(patches.length).toBe(1);
+    expect(readFileSync(join(repo, '.git', 'guidiff', patches[0]!), 'utf8')).toContain('a.txt');
+    await fetch(`${url}/api/cancel`, { method: 'POST' });
+    expect(await proc.exited).toBe(2);
+    expect(readdirSync(join(repo, '.git', 'guidiff')).filter((f) => f.startsWith('chat-diff-'))).toEqual([]);
   });
 });

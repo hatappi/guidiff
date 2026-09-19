@@ -172,6 +172,11 @@ URL itself and pulls the diff through `gh pr diff`. Tell the user the review UI 
 opening in their browser, then stop — the task notification will arrive when they
 submit.
 
+The UI also has an **Ask AI** panel: the reviewer can ask a local `claude -p`
+subprocess about the diff while reviewing. Its conversation is for the
+reviewer's understanding only and is never part of the result JSON. Pass
+`--no-ai` to hide it; it hides itself when `claude` is not on PATH.
+
 ### 7. Handle the result
 
 When the background task exits, read its output:
