@@ -70,9 +70,12 @@ export default function ChatPanel(props: ChatPanelProps) {
             );
           }
           const question = props.messages[i - 1];
-          const anchored = question?.role === 'user' && question.context?.startLine !== undefined;
+          const anchored =
+            question?.role === 'user' &&
+            question.context?.startLine !== undefined &&
+            question.context?.endLine !== undefined;
           return (
-            <div key={m.id} className={`chat-msg chat-assistant chat-${m.status}`}>
+            <div key={m.id} className={`chat-msg chat-assistant chat-status-${m.status}`}>
               <div className="chat-text markdown-body" dangerouslySetInnerHTML={{ __html: renderChatMarkdown(m.content) }} />
               {m.status === 'streaming' && <span className="chat-cursor" aria-hidden="true">▍</span>}
               {m.status === 'aborted' && <div className="chat-note">(stopped)</div>}

@@ -64,6 +64,16 @@ test('stopped and failed answers say so', () => {
   expect(screen.getByText('claude exited with code 1')).toBeTruthy();
 });
 
+test('the error style stays on the note, not the message wrapper', () => {
+  const { container } = render(<ChatPanel {...base} messages={[
+    q, { id: 4, role: 'assistant', content: '', status: 'error', error: 'claude exited with code 1' },
+  ]} />);
+  // .chat-error must be the note div only — the wrapper uses chat-status-error.
+  expect(container.querySelectorAll('.chat-error').length).toBe(1);
+  expect(container.querySelector('.chat-msg.chat-error')).toBeFalsy();
+  expect(container.querySelector('.chat-msg.chat-status-error')).toBeTruthy();
+});
+
 test('Clear is disabled on an empty transcript; Clear and close call their handlers', () => {
   const onClear = mock(noop);
   const onClose = mock(noop);
