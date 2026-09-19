@@ -27,6 +27,7 @@ export default function App() {
   const [chatStreaming, setChatStreaming] = useState(false);
   const [draft, setDraft] = useState<CommentDraft | null>(null);
   const placeholderId = useRef(-1);
+  const turnRef = useRef(0);
   const aiEnabled = payload?.ai.enabled ?? false;
 
   useEffect(() => {
@@ -176,9 +177,13 @@ export default function App() {
 
   // Optimistic placeholders use fresh negative ids per turn so they never
   // collide with server ids or with a stale placeholder left behind when a
-  // re-fetch failed; the transcript is re-fetched once the stream ends.
+  // re-fetch failed; the transcript is re-fetched once the stream ends. The
+  // turn counter guards that re-fetch: if turn B starts and finishes while
+  // turn A's re-fetch is still in flight, A's stale transcript must not
+  // overwrite B's placeholders.
   const askAi = async (content: string, context?: ChatContext) => {
     if (chatStreaming) return;
+    const turn = ++turnRef.current;
     const userId = placeholderId.current--;
     const assistantId = placeholderId.current--;
     setChatOpen(true);
@@ -200,7 +205,10 @@ export default function App() {
       setChat((c) => c.map((m) => (m.id === assistantId ? { ...m, status: 'error', error: String(e) } : m)));
     } finally {
       setChatStreaming(false);
-      api.fetchChat().then((r) => setChat(r.messages)).catch(() => {});
+      api.fetchChat().then((r) => {
+        // A later turn owns the transcript now; its own re-fetch will land.
+        if (turnRef.current === turn) setChat(r.messages);
+      }).catch(() => {});
     }
   };
   const abortChat = () => { api.abortChat().catch(() => {}); };

@@ -25,6 +25,10 @@ const payload: ReviewPayload = {
 
 let payloadToServe: ReviewPayload;
 let chatToServe: ChatMessage[] = [];
+// Lets a single test make one fetchChat() call hang until released, to
+// reproduce a stale re-fetch racing a newer chat turn.
+let stallNextFetch = false;
+let releaseStalledFetch: (() => void) | null = null;
 mock.module('./api.ts', () => ({
   fetchReview: async () => payloadToServe,
   createComment: async () => ({ id: 1 }),
@@ -34,7 +38,18 @@ mock.module('./api.ts', () => ({
   setSectionReviewed: async () => ({}),
   submitReview: async () => ({}),
   cancelReview: async () => ({}),
-  fetchChat: async () => ({ messages: chatToServe }),
+  fetchChat: async () => {
+    if (stallNextFetch) {
+      stallNextFetch = false;
+      // Snapshot now: the caller reads it only once released, by which
+      // time chatToServe may have moved on — that's the staleness this
+      // simulates.
+      const stale = chatToServe;
+      await new Promise<void>((resolve) => { releaseStalledFetch = resolve; });
+      return { messages: stale };
+    }
+    return { messages: chatToServe };
+  },
   // Stateful like the real server: App re-fetches the transcript after every
   // turn, so the mock must remember what was sent.
   sendChatMessage: async function* (content: string, context?: ChatContext) {
@@ -442,5 +457,36 @@ describe('App', () => {
     await waitFor(() => expect(screen.getByText('Add as comment')).toBeTruthy());
     fireEvent.click(screen.getByText('Add as comment'));
     await waitFor(() => expect((screen.getByPlaceholderText('Leave a comment') as HTMLTextAreaElement).value).toBe('Because.'));
+  });
+
+  test('a stale chat re-fetch does not clobber a newer turn', async () => {
+    payloadToServe = aiPayload;
+    chatToServe = [];
+    stallNextFetch = false;
+    releaseStalledFetch = null;
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Ask AI')).toBeTruthy());
+    fireEvent.click(screen.getByText('Ask AI'));
+
+    // Arm the stall so the first turn's post-stream re-fetch hangs, holding
+    // a transcript snapshot that predates the second turn.
+    stallNextFetch = true;
+    const input = screen.getByPlaceholderText('Ask about this diff…');
+    fireEvent.change(input, { target: { value: 'first' } });
+    fireEvent.click(screen.getByText('Send'));
+    await waitFor(() => expect(screen.getByText('first')).toBeTruthy());
+    await waitFor(() => expect(releaseStalledFetch).toBeTruthy());
+
+    // The first turn's re-fetch is now stuck in flight. Send a second turn
+    // entirely on top of it; its own (unstalled) re-fetch lands normally.
+    fireEvent.change(input, { target: { value: 'second' } });
+    fireEvent.click(screen.getByText('Send'));
+    await waitFor(() => expect(screen.getByText('second')).toBeTruthy());
+
+    // Release the first turn's stale re-fetch. Its snapshot lacks the
+    // second turn; without a generation guard this would wipe it out.
+    releaseStalledFetch!();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(screen.getByText('second')).toBeTruthy();
   });
 });
