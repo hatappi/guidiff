@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { loadState } from './state.ts';
 import { startServer } from './server.ts';
 import { VERSION } from './version.ts';
+import type { ChatEvent, ChatProvider } from './ai/provider.ts';
 
 const files: FileDiff[] = [
   {
@@ -257,5 +258,127 @@ describe('review api', () => {
     const { url } = boot(gitDir);
     const res = await fetch(`${url}/api/comments`, { method: 'POST', body: JSON.stringify({ file: '' }) });
     expect(res.status).toBe(400);
+  });
+});
+
+function bootWithAi(gitDir: string, scripts: ChatEvent[][]) {
+  const requests: Array<{ prompt: string; sessionId?: string; addDirs?: string[] }> = [];
+  let release: (() => void) | null = null;
+  const provider: ChatProvider = {
+    async *ask(req) {
+      requests.push({
+        prompt: req.prompt,
+        ...(req.sessionId ? { sessionId: req.sessionId } : {}),
+        ...(req.addDirs ? { addDirs: req.addDirs } : {}),
+      });
+      for (const ev of scripts.shift() ?? []) {
+        if (ev.type === 'delta' && ev.text === '<wait>') {
+          // A conforming provider checks the signal before it waits: the
+          // abort may already have fired while this generator was suspended.
+          if (req.signal.aborted) return;
+          await new Promise<void>((r) => {
+            release = r;
+            req.signal.addEventListener('abort', () => r(), { once: true });
+          });
+          if (req.signal.aborted) return;
+          continue;
+        }
+        yield ev;
+      }
+    },
+  };
+  const handle = startServer({
+    port: 0,
+    target: 'working tree',
+    guide: null,
+    files,
+    fileStates: new Map([['src/a.ts', { viewed: false, changedSinceLastView: false }]]),
+    gitDir,
+    state: { version: 1, files: {} },
+    ai: { provider, cwd: '/repo', patchPath: '/repo/.git/guidiff/chat-diff-1.patch', isPullRequest: false },
+  });
+  stop = () => handle.server.stop(true);
+  return { ...handle, requests, release: () => release?.() };
+}
+
+function parseSse(text: string): Array<{ event: string; data: unknown }> {
+  return text.split('\n\n').filter(Boolean).map((block) => {
+    const event = block.match(/^event: (.*)$/m)![1]!;
+    const data = JSON.parse(block.match(/^data: (.*)$/m)![1]!);
+    return { event, data };
+  });
+}
+
+describe('chat api', () => {
+  test('payload reports ai disabled and chat routes 404 without a provider', async () => {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const { url } = boot(gitDir);
+    expect((await (await fetch(`${url}/api/review`)).json()).ai).toEqual({ enabled: false });
+    expect((await fetch(`${url}/api/chat`)).status).toBe(404);
+    expect((await fetch(`${url}/api/chat/messages`, { method: 'POST', body: '{"content":"x"}' })).status).toBe(404);
+  });
+
+  test('a message streams deltas then a done event carrying the stored reply', async () => {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const { url, requests } = bootWithAi(gitDir, [
+      [{ type: 'delta', text: 'po' }, { type: 'delta', text: 'ng' }, { type: 'done', sessionId: 's1' }],
+    ]);
+    expect((await (await fetch(`${url}/api/review`)).json()).ai).toEqual({ enabled: true });
+
+    const res = await fetch(`${url}/api/chat/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ content: 'why?', context: { file: 'src/a.ts', side: 'new', startLine: 1, endLine: 1, code: 'const a = 2;' } }),
+    });
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+    const events = parseSse(await res.text());
+    expect(events).toEqual([
+      { event: 'delta', data: { text: 'po' } },
+      { event: 'delta', data: { text: 'ng' } },
+      { event: 'done', data: { message: { id: 2, role: 'assistant', content: 'pong', status: 'done' } } },
+    ]);
+    expect(requests[0]!.prompt).toContain('File: src/a.ts (new side, line 1)');
+    expect(requests[0]!.addDirs).toEqual(['/repo/.git/guidiff']);
+
+    const transcript = await (await fetch(`${url}/api/chat`)).json();
+    expect(transcript.messages.map((m: { role: string }) => m.role)).toEqual(['user', 'assistant']);
+    expect(transcript.messages[0].context.file).toBe('src/a.ts');
+  });
+
+  test('rejects an empty or malformed body with 400', async () => {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const { url } = bootWithAi(gitDir, []);
+    expect((await fetch(`${url}/api/chat/messages`, { method: 'POST', body: '{"content":"   "}' })).status).toBe(400);
+    expect((await fetch(`${url}/api/chat/messages`, { method: 'POST', body: 'nope' })).status).toBe(400);
+  });
+
+  test('a second message while streaming is 409; abort ends the first as aborted', async () => {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const { url } = bootWithAi(gitDir, [[{ type: 'delta', text: 'par' }, { type: 'delta', text: '<wait>' }]]);
+    const first = fetch(`${url}/api/chat/messages`, { method: 'POST', body: '{"content":"a"}' });
+    // Wait until the first turn is registered before racing the second.
+    await new Promise((r) => setTimeout(r, 50));
+    expect((await fetch(`${url}/api/chat/messages`, { method: 'POST', body: '{"content":"b"}' })).status).toBe(409);
+    expect((await fetch(`${url}/api/chat/abort`, { method: 'POST' })).status).toBe(200);
+    const events = parseSse(await (await first).text());
+    expect(events.at(-1)).toEqual({ event: 'done', data: { message: { id: 2, role: 'assistant', content: 'par', status: 'aborted' } } });
+  });
+
+  test('clear empties the transcript', async () => {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const { url } = bootWithAi(gitDir, [[{ type: 'done', sessionId: 's1' }]]);
+    await (await fetch(`${url}/api/chat/messages`, { method: 'POST', body: '{"content":"a"}' })).text();
+    expect((await fetch(`${url}/api/chat/clear`, { method: 'POST' })).status).toBe(200);
+    expect((await (await fetch(`${url}/api/chat`)).json()).messages).toEqual([]);
+  });
+
+  test('dispose aborts an in-flight turn', async () => {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const { url, dispose } = bootWithAi(gitDir, [[{ type: 'delta', text: '<wait>' }]]);
+    const first = fetch(`${url}/api/chat/messages`, { method: 'POST', body: '{"content":"a"}' });
+    await new Promise((r) => setTimeout(r, 50));
+    dispose();
+    const events = parseSse(await (await first).text());
+    expect(events.at(-1)!.event).toBe('done');
+    expect((events.at(-1)!.data as { message: { status: string } }).message.status).toBe('aborted');
   });
 });

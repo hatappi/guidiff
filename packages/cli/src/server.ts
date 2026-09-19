@@ -9,7 +9,10 @@ import {
   type ReviewResult,
   type StateFile,
 } from '@guidiff/schema';
+import { dirname } from 'node:path';
 import { z } from 'zod';
+import { BusyError, buildSystemPrompt, ChatSession } from './ai/chat.ts';
+import type { ChatEvent, ChatProvider } from './ai/provider.ts';
 import { saveState, setViewed } from './state.ts';
 import { ReviewStore } from './store.ts';
 import { VERSION } from './version.ts';
@@ -25,6 +28,8 @@ export interface ServerOptions {
   gitDir: string;
   state: StateFile;
   staticRoutes?: Record<string, unknown>;
+  // Absent means the Ask AI panel is disabled.
+  ai?: { provider: ChatProvider; cwd: string; patchPath: string | null; isPullRequest: boolean };
 }
 
 const SubmitSchema = z.object({ verdict: VerdictSchema, overallComment: z.string().optional() });
@@ -36,6 +41,17 @@ const CommentPatchSchema = z.object({
   body: z.string(),
   suggestion: z.string().nullable().optional(),
 });
+const ChatContextSchema = z.object({
+  file: z.string().min(1),
+  side: z.enum(['new', 'old']).optional(),
+  startLine: z.number().int().positive().optional(),
+  endLine: z.number().int().positive().optional(),
+  code: z.string().optional(),
+});
+const ChatSendSchema = z.object({
+  content: z.string().trim().min(1),
+  context: ChatContextSchema.optional(),
+});
 
 export function startServer(opts: ServerOptions) {
   const store = new ReviewStore();
@@ -45,6 +61,25 @@ export function startServer(opts: ServerOptions) {
 
   const json = (data: unknown, status = 200) => Response.json(data, { status });
   const badRequest = (e: unknown) => json({ error: String(e) }, 400);
+
+  const chat = opts.ai
+    ? new ChatSession({
+        provider: opts.ai.provider,
+        cwd: opts.ai.cwd,
+        // The patch file may live outside the checkout (linked worktrees keep
+        // the git dir under the main repo), and restricted mode only reads
+        // inside the working directories.
+        ...(opts.ai.patchPath ? { addDirs: [dirname(opts.ai.patchPath)] } : {}),
+        systemPrompt: buildSystemPrompt({
+          target: opts.target,
+          guide: opts.guide,
+          files: opts.files,
+          patchPath: opts.ai.patchPath,
+          isPullRequest: opts.ai.isPullRequest,
+        }),
+      })
+    : null;
+  const aiDisabled = () => json({ error: 'Ask AI is disabled' }, 404);
 
   async function parseBody<T>(req: Request, schema: z.ZodType<T>): Promise<T> {
     return schema.parse(await req.json());
@@ -67,7 +102,7 @@ export function startServer(opts: ServerOptions) {
             })),
             comments: store.comments(),
             reviewedSections: store.reviewedSections(),
-            ai: { enabled: false },
+            ai: { enabled: chat !== null },
           };
           return json(payload);
         },
@@ -125,6 +160,77 @@ export function startServer(opts: ServerOptions) {
           }
         },
       },
+      '/api/chat': {
+        GET: () => (chat ? json({ messages: chat.messages() }) : aiDisabled()),
+      },
+      '/api/chat/messages': {
+        POST: async (req: Request) => {
+          if (!chat) return aiDisabled();
+          let body: z.infer<typeof ChatSendSchema>;
+          try {
+            body = await parseBody(req, ChatSendSchema);
+          } catch (e) {
+            return badRequest(e);
+          }
+          let events: AsyncIterator<ChatEvent>;
+          try {
+            events = chat.send(body.content, body.context)[Symbol.asyncIterator]();
+          } catch (e) {
+            if (e instanceof BusyError) return json({ error: e.message }, 409);
+            throw e;
+          }
+          const encoder = new TextEncoder();
+          const frame = (event: string, data: unknown) =>
+            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+          const stream = new ReadableStream<Uint8Array>({
+            async pull(controller) {
+              // Guard a thrown iterator too, so the client always gets exactly one closing `done` frame.
+              try {
+                // pull() is not re-invoked after a call that neither enqueues
+                // nor closes, so skipping the provider's own 'done'/'error'
+                // markers must not return early.
+                for (;;) {
+                  const { value, done } = await events.next();
+                  if (done) {
+                    controller.enqueue(frame('done', { message: chat.messages().at(-1) }));
+                    controller.close();
+                    return;
+                  }
+                  if (value.type === 'delta') {
+                    controller.enqueue(frame('delta', { text: value.text }));
+                    return;
+                  }
+                }
+              } catch {
+                controller.enqueue(frame('done', { message: chat.messages().at(-1) }));
+                controller.close();
+              }
+            },
+            cancel() {
+              // The browser went away mid-reply: stop paying for tokens.
+              chat.abort();
+              void events.return?.(undefined);
+            },
+          });
+          return new Response(stream, {
+            headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' },
+          });
+        },
+      },
+      '/api/chat/abort': {
+        POST: () => {
+          if (!chat) return aiDisabled();
+          chat.abort();
+          return json({ ok: true });
+        },
+      },
+      '/api/chat/clear': {
+        POST: () => {
+          if (!chat) return aiDisabled();
+          chat.clear();
+          return json({ ok: true });
+        },
+      },
       '/api/submit': {
         POST: async (req: Request) => {
           try {
@@ -136,6 +242,7 @@ export function startServer(opts: ServerOptions) {
               comments: store.comments().map(({ id: _id, ...c }) => c),
               reviewedSections: store.reviewedSections(),
             });
+            chat?.abort();
             queueMicrotask(() => resolveOutcome({ type: 'submit', result }));
             return json({ ok: true });
           } catch (e) {
@@ -145,6 +252,7 @@ export function startServer(opts: ServerOptions) {
       },
       '/api/cancel': {
         POST: () => {
+          chat?.abort();
           queueMicrotask(() => resolveOutcome({ type: 'cancel' }));
           return json({ ok: true });
         },
@@ -152,5 +260,5 @@ export function startServer(opts: ServerOptions) {
     },
   });
 
-  return { server, url: `http://127.0.0.1:${server.port}`, outcome };
+  return { server, url: `http://127.0.0.1:${server.port}`, outcome, dispose: () => chat?.abort() };
 }
