@@ -381,4 +381,50 @@ describe('chat api', () => {
     expect(events.at(-1)!.event).toBe('done');
     expect((events.at(-1)!.data as { message: { status: string } }).message.status).toBe('aborted');
   });
+
+  test('clear during an in-flight turn keeps the done frame well-formed', async () => {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const { url } = bootWithAi(gitDir, [[{ type: 'delta', text: '<wait>' }]]);
+    const first = fetch(`${url}/api/chat/messages`, { method: 'POST', body: '{"content":"a"}' });
+    // Wait until the turn is registered before clearing out from under it.
+    await new Promise((r) => setTimeout(r, 50));
+    expect((await fetch(`${url}/api/chat/clear`, { method: 'POST' })).status).toBe(200);
+    const events = parseSse(await (await first).text());
+    const last = events.at(-1)!;
+    expect(last.event).toBe('done');
+    const message = (last.data as { message: { role: string; status: string } }).message;
+    expect(message.role).toBe('assistant');
+    expect(message.status).toBe('aborted');
+    expect((await (await fetch(`${url}/api/chat`)).json()).messages).toEqual([]);
+  });
+
+  test('client disconnect aborts the turn', async () => {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const { url } = bootWithAi(gitDir, [[{ type: 'delta', text: '<wait>' }]]);
+    const ac = new AbortController();
+    const first = fetch(`${url}/api/chat/messages`, {
+      method: 'POST', body: '{"content":"a"}', signal: ac.signal,
+    });
+    await new Promise((r) => setTimeout(r, 50));
+    ac.abort();
+    // The local fetch promise rejects with our own AbortError; that's not
+    // what this test is about, so swallow it and check the server's side.
+    await first.catch(() => {});
+    // Poll for the busy slot to clear: that's the observable evidence the
+    // server's stream `cancel()` actually ran off the client disconnect.
+    const deadline = Date.now() + 1000;
+    let freed = false;
+    while (Date.now() < deadline) {
+      const res = await fetch(`${url}/api/chat/messages`, { method: 'POST', body: '{"content":"b"}' });
+      if (res.status === 200) {
+        freed = true;
+        await res.text();
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    expect(freed).toBe(true);
+    const transcript = await (await fetch(`${url}/api/chat`)).json();
+    expect(transcript.messages[1].status).toBe('aborted');
+  });
 });

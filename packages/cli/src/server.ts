@@ -179,6 +179,14 @@ export function startServer(opts: ServerOptions) {
             if (e instanceof BusyError) return json({ error: e.message }, 409);
             throw e;
           }
+          // Captured now, not read off chat.messages().at(-1) later: a
+          // /api/chat/clear mid-turn empties the transcript, and the closing
+          // frame still needs to name the assistant message that was aborted.
+          const assistantId = chat.messages().at(-1)!.id;
+          const finalMessage = () =>
+            chat.messages().find((m) => m.id === assistantId) ??
+            // clear() dropped the transcript mid-turn: the turn was aborted, so say so.
+            { id: assistantId, role: 'assistant' as const, content: '', status: 'aborted' as const };
           const encoder = new TextEncoder();
           const frame = (event: string, data: unknown) =>
             encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
@@ -192,7 +200,7 @@ export function startServer(opts: ServerOptions) {
                 for (;;) {
                   const { value, done } = await events.next();
                   if (done) {
-                    controller.enqueue(frame('done', { message: chat.messages().at(-1) }));
+                    controller.enqueue(frame('done', { message: finalMessage() }));
                     controller.close();
                     return;
                   }
@@ -202,7 +210,7 @@ export function startServer(opts: ServerOptions) {
                   }
                 }
               } catch {
-                controller.enqueue(frame('done', { message: chat.messages().at(-1) }));
+                controller.enqueue(frame('done', { message: finalMessage() }));
                 controller.close();
               }
             },
