@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ReviewComment, ReviewPayload } from '@guidiff/schema';
+import type { ChatContext, ChatMessage, ReviewComment, ReviewPayload } from '@guidiff/schema';
 import * as api from './api.ts';
+import ChatPanel from './components/ChatPanel.tsx';
 import DoneScreen from './components/DoneScreen.tsx';
 import FileDiffView from './components/FileDiffView.tsx';
 import GuideSectionBlock from './components/GuideSectionBlock.tsx';
@@ -9,6 +10,7 @@ import SubmitModal from './components/SubmitModal.tsx';
 import { buildSectionGroups } from './sections.ts';
 import { useTheme } from './theme-context.tsx';
 import { renderMarkdown } from './markdown.ts';
+import type { CommentDraft } from './draft.ts';
 
 export default function App() {
   const { theme, toggle: toggleTheme } = useTheme();
@@ -20,10 +22,23 @@ export default function App() {
   const [overviewOpen, setOverviewOpen] = useState(true);
   const [scrollTarget, setScrollTarget] = useState<string | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chat, setChat] = useState<ChatMessage[]>([]);
+  const [chatStreaming, setChatStreaming] = useState(false);
+  const [draft, setDraft] = useState<CommentDraft | null>(null);
+  const placeholderId = useRef(-1);
+  const aiEnabled = payload?.ai.enabled ?? false;
 
   useEffect(() => {
     api.fetchReview().then(setPayload).catch((e) => setError(String(e)));
   }, []);
+
+  // Load the transcript once the payload says AI is on, so a reload keeps
+  // the conversation.
+  useEffect(() => {
+    if (!aiEnabled) return;
+    api.fetchChat().then((r) => setChat(r.messages)).catch(() => {});
+  }, [aiEnabled]);
 
   const groups = useMemo(
     () => (payload?.guide ? buildSectionGroups(payload.guide, payload.files) : null),
@@ -159,6 +174,49 @@ export default function App() {
     );
   };
 
+  // Optimistic placeholders use fresh negative ids per turn so they never
+  // collide with server ids or with a stale placeholder left behind when a
+  // re-fetch failed; the transcript is re-fetched once the stream ends.
+  const askAi = async (content: string, context?: ChatContext) => {
+    if (chatStreaming) return;
+    const userId = placeholderId.current--;
+    const assistantId = placeholderId.current--;
+    setChatOpen(true);
+    setChatStreaming(true);
+    setChat((c) => [
+      ...c,
+      { id: userId, role: 'user', content, status: 'done', ...(context ? { context } : {}) },
+      { id: assistantId, role: 'assistant', content: '', status: 'streaming' },
+    ]);
+    try {
+      for await (const ev of api.sendChatMessage(content, context)) {
+        if (ev.type === 'delta') {
+          setChat((c) => c.map((m) => (m.id === assistantId ? { ...m, content: m.content + ev.text } : m)));
+        } else {
+          setChat((c) => c.map((m) => (m.id === assistantId ? ev.message : m)));
+        }
+      }
+    } catch (e) {
+      setChat((c) => c.map((m) => (m.id === assistantId ? { ...m, status: 'error', error: String(e) } : m)));
+    } finally {
+      setChatStreaming(false);
+      api.fetchChat().then((r) => setChat(r.messages)).catch(() => {});
+    }
+  };
+  const abortChat = () => { api.abortChat().catch(() => {}); };
+  const clearChat = () => {
+    api.clearChat().then(() => setChat([])).catch(() => {});
+  };
+  const addAsComment = (answer: ChatMessage, question: ChatMessage) => {
+    const c = question.context;
+    if (!c || c.startLine === undefined || c.endLine === undefined) return;
+    // A viewed file is collapsed and cannot show a form; expand it first.
+    const target = payload.files.find((f) => f.path === c.file);
+    if (target?.state.viewed) toggleViewed(c.file, false);
+    setDraft({ file: c.file, side: c.side ?? 'new', startLine: c.startLine, endLine: c.endLine, body: answer.content.trim() });
+    setScrollTarget(`file-${c.file}`);
+  };
+
   const viewedCount = payload.files.filter((f) => f.state.viewed).length;
 
   const diffProps = (f: ReviewPayload['files'][number]) => ({
@@ -169,10 +227,14 @@ export default function App() {
     onAddComment: addComment,
     onUpdateComment: updateComment,
     onDeleteComment: deleteComment,
+    // FileDiffView calls onAskAi(context, question); askAi takes (content, context).
+    ...(aiEnabled ? { onAskAi: (context: ChatContext, question: string) => { void askAi(question, context); }, askAiDisabled: chatStreaming } : {}),
+    draft,
+    onDraftConsumed: () => setDraft(null),
   });
 
   return (
-    <div className="app">
+    <div className="app" data-chat-open={chatOpen || undefined}>
       <div className="app-header" ref={headerRef}>
         <header className="header">
           <h1>guidiff</h1>
@@ -189,6 +251,9 @@ export default function App() {
           <button className="view-toggle" onClick={() => setViewMode(viewMode === 'unified' ? 'split' : 'unified')}>
             {viewMode === 'unified' ? 'Split view' : 'Unified view'}
           </button>
+          {aiEnabled && (
+            <button className={chatOpen ? 'selected' : undefined} onClick={() => setChatOpen((o) => !o)}>Ask AI</button>
+          )}
           <button className="primary" onClick={() => setModalOpen(true)}>Submit</button>
           <button onClick={() => { api.cancelReview().finally(() => setFinished('cancel')); }}>Cancel</button>
         </header>
@@ -258,6 +323,18 @@ export default function App() {
           </main>
           <ResizeHandle />
         </div>
+      )}
+      {aiEnabled && chatOpen && (
+        <ChatPanel
+          messages={chat}
+          streaming={chatStreaming}
+          onSend={(content) => { void askAi(content); }}
+          onAbort={abortChat}
+          onClear={clearChat}
+          onClose={() => setChatOpen(false)}
+          onJump={(file) => jumpTo(file)}
+          onAddAsComment={addAsComment}
+        />
       )}
       {modalOpen && payload && (
         <SubmitModal

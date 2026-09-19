@@ -1,6 +1,6 @@
 import { describe, expect, test, mock } from 'bun:test';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { ReviewPayload } from '@guidiff/schema';
+import type { ChatContext, ChatMessage, ReviewPayload } from '@guidiff/schema';
 import App from './App.tsx';
 
 const payload: ReviewPayload = {
@@ -24,6 +24,7 @@ const payload: ReviewPayload = {
 };
 
 let payloadToServe: ReviewPayload;
+let chatToServe: ChatMessage[] = [];
 mock.module('./api.ts', () => ({
   fetchReview: async () => payloadToServe,
   createComment: async () => ({ id: 1 }),
@@ -33,6 +34,20 @@ mock.module('./api.ts', () => ({
   setSectionReviewed: async () => ({}),
   submitReview: async () => ({}),
   cancelReview: async () => ({}),
+  fetchChat: async () => ({ messages: chatToServe }),
+  // Stateful like the real server: App re-fetches the transcript after every
+  // turn, so the mock must remember what was sent.
+  sendChatMessage: async function* (content: string, context?: ChatContext) {
+    const id = chatToServe.length + 1;
+    const user: ChatMessage = { id, role: 'user', content, status: 'done', ...(context ? { context } : {}) };
+    const assistant: ChatMessage = { id: id + 1, role: 'assistant', content: 'pong', status: 'done' };
+    chatToServe = [...chatToServe, user, assistant];
+    yield { type: 'delta', text: 'po' };
+    yield { type: 'delta', text: 'ng' };
+    yield { type: 'done', message: assistant };
+  },
+  abortChat: async () => ({}),
+  clearChat: async () => { chatToServe = []; return {}; },
 }));
 
 const guidedPayload: ReviewPayload = {
@@ -55,6 +70,8 @@ const guidedPayload: ReviewPayload = {
   reviewedSections: [],
   ai: { enabled: false },
 };
+
+const aiPayload: ReviewPayload = { ...payload, ai: { enabled: true } };
 
 describe('App', () => {
   test('loads review payload and shows target and files', async () => {
@@ -365,5 +382,65 @@ describe('App', () => {
     await waitFor(() =>
       expect(screen.getByText(/Review submitted/)).toBeTruthy(),
     );
+  });
+
+  test('with ai disabled there is no Ask AI button', async () => {
+    payloadToServe = payload;
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('working tree')).toBeTruthy());
+    expect(screen.queryByText('Ask AI')).toBeNull();
+  });
+
+  test('the header button toggles the chat panel', async () => {
+    payloadToServe = aiPayload;
+    chatToServe = [];
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Ask AI')).toBeTruthy());
+    expect(screen.queryByLabelText('Ask AI')).toBeNull();
+    fireEvent.click(screen.getByText('Ask AI'));
+    expect(screen.getByLabelText('Ask AI')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('Close Ask AI'));
+    expect(screen.queryByLabelText('Ask AI')).toBeNull();
+  });
+
+  test('sending a question streams the answer into the panel', async () => {
+    payloadToServe = aiPayload;
+    chatToServe = [];
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Ask AI')).toBeTruthy());
+    fireEvent.click(screen.getByText('Ask AI'));
+    const input = screen.getByPlaceholderText('Ask about this diff…');
+    fireEvent.change(input, { target: { value: 'why?' } });
+    fireEvent.click(screen.getByText('Send'));
+    await waitFor(() => expect(screen.getByText('pong')).toBeTruthy());
+    expect(screen.getByText('why?')).toBeTruthy();
+  });
+
+  test('Ask AI from a comment form opens the panel with the question and its context', async () => {
+    payloadToServe = aiPayload;
+    chatToServe = [];
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Ask AI')).toBeTruthy());
+    const newLineCell = screen.getAllByText('1').find((el) => el.closest('tr')?.classList.contains('line-add'))!;
+    fireEvent.mouseDown(newLineCell, { button: 0, shiftKey: true });
+    fireEvent.change(screen.getByPlaceholderText('Leave a comment'), { target: { value: 'what is a?' } });
+    fireEvent.click(within(screen.getByPlaceholderText('Leave a comment').closest('.comment-form') as HTMLElement).getByText('Ask AI'));
+    await waitFor(() => expect(screen.getByText('src/a.ts:1')).toBeTruthy());
+    expect(screen.getByText('what is a?')).toBeTruthy();
+    expect(screen.queryByPlaceholderText('Leave a comment')).toBeNull();
+  });
+
+  test('Add as comment opens a prefilled comment form on the question range', async () => {
+    payloadToServe = aiPayload;
+    chatToServe = [
+      { id: 1, role: 'user', content: 'why?', status: 'done', context: { file: 'src/a.ts', side: 'new', startLine: 1, endLine: 1, code: 'const a = 2;' } },
+      { id: 2, role: 'assistant', content: 'Because.', status: 'done' },
+    ];
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Ask AI')).toBeTruthy());
+    fireEvent.click(screen.getByText('Ask AI'));
+    await waitFor(() => expect(screen.getByText('Add as comment')).toBeTruthy());
+    fireEvent.click(screen.getByText('Add as comment'));
+    await waitFor(() => expect((screen.getByPlaceholderText('Leave a comment') as HTMLTextAreaElement).value).toBe('Because.'));
   });
 });
