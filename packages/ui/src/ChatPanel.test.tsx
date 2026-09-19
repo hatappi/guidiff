@@ -4,7 +4,10 @@ import type { ChatMessage } from '@guidiff/schema';
 import ChatPanel from './components/ChatPanel.tsx';
 
 const noop = () => {};
-const base = { streaming: false, onSend: noop, onAbort: noop, onClear: noop, onClose: noop, onJump: noop, onAddAsComment: noop };
+const base = {
+  streaming: false, onSend: noop, onAbort: noop, onClear: noop, onClose: noop, onJump: noop, onAddAsComment: noop,
+  options: {}, onOptionsChange: noop,
+};
 
 const q: ChatMessage = {
   id: 1, role: 'user', content: 'why?', status: 'done',
@@ -89,4 +92,22 @@ test('Clear is disabled on an empty transcript; Clear and close call their handl
 test('the panel has its own resize handle', () => {
   render(<ChatPanel {...base} messages={[]} />);
   expect(screen.getByLabelText('Resize Ask AI panel')).toBeTruthy();
+});
+
+test('model and effort selects reflect the options and report changes', () => {
+  const onOptionsChange = mock(noop);
+  render(<ChatPanel {...base} messages={[]} options={{ model: 'opus' }} onOptionsChange={onOptionsChange} />);
+  const model = screen.getByLabelText('Model') as HTMLSelectElement;
+  const effort = screen.getByLabelText('Effort') as HTMLSelectElement;
+  expect(model.value).toBe('opus');
+  expect(effort.value).toBe('default');
+  fireEvent.change(effort, { target: { value: 'high' } });
+  expect(onOptionsChange).toHaveBeenCalledWith({ model: 'opus', effort: 'high' });
+  fireEvent.change(model, { target: { value: 'default' } });
+  expect(onOptionsChange).toHaveBeenCalledWith({});
+});
+
+test('a user message shows the options it was asked with', () => {
+  render(<ChatPanel {...base} messages={[{ ...q, options: { model: 'haiku', effort: 'max' } }, a]} />);
+  expect(screen.getByText('haiku · max')).toBeTruthy();
 });

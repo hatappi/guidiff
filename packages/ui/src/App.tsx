@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ChatContext, ChatMessage, ReviewComment, ReviewPayload } from '@guidiff/schema';
+import type { ChatContext, ChatMessage, ChatOptions, ReviewComment, ReviewPayload } from '@guidiff/schema';
 import * as api from './api.ts';
+import { loadChatOptions, saveChatOptions } from './chat-options.ts';
 import ChatPanel from './components/ChatPanel.tsx';
 import DoneScreen from './components/DoneScreen.tsx';
 import FileDiffView from './components/FileDiffView.tsx';
@@ -25,6 +26,7 @@ export default function App() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [chatStreaming, setChatStreaming] = useState(false);
+  const [chatOptions, setChatOptions] = useState<ChatOptions>(() => loadChatOptions());
   const [draft, setDraft] = useState<CommentDraft | null>(null);
   const placeholderId = useRef(-1);
   const turnRef = useRef(0);
@@ -190,11 +192,15 @@ export default function App() {
     setChatStreaming(true);
     setChat((c) => [
       ...c,
-      { id: userId, role: 'user', content, status: 'done', ...(context ? { context } : {}) },
+      {
+        id: userId, role: 'user', content, status: 'done',
+        ...(context ? { context } : {}),
+        ...(chatOptions.model || chatOptions.effort ? { options: chatOptions } : {}),
+      },
       { id: assistantId, role: 'assistant', content: '', status: 'streaming' },
     ]);
     try {
-      for await (const ev of api.sendChatMessage(content, context)) {
+      for await (const ev of api.sendChatMessage(content, context, chatOptions)) {
         if (ev.type === 'delta') {
           setChat((c) => c.map((m) => (m.id === assistantId ? { ...m, content: m.content + ev.text } : m)));
         } else {
@@ -211,6 +217,7 @@ export default function App() {
       }).catch(() => {});
     }
   };
+  const changeChatOptions = (o: ChatOptions) => { setChatOptions(o); saveChatOptions(o); };
   const abortChat = () => { api.abortChat().catch(() => {}); };
   const clearChat = () => {
     api.clearChat().then(() => setChat([])).catch(() => {});
@@ -342,6 +349,8 @@ export default function App() {
           onClose={() => setChatOpen(false)}
           onJump={(file) => jumpTo(file)}
           onAddAsComment={addAsComment}
+          options={chatOptions}
+          onOptionsChange={changeChatOptions}
         />
       )}
       {modalOpen && payload && (

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
-import type { ChatMessage } from '@guidiff/schema';
+import { CHAT_EFFORTS, CHAT_MODELS, type ChatMessage, type ChatOptions } from '@guidiff/schema';
 import { renderChatMarkdown } from '../markdown.ts';
 import { CHAT_RESIZE } from '../resize.ts';
 import ResizeHandle from './ResizeHandle.tsx';
@@ -14,6 +14,8 @@ export interface ChatPanelProps {
   onClose: () => void;
   onJump: (file: string) => void;
   onAddAsComment: (answer: ChatMessage, question: ChatMessage) => void;
+  options: ChatOptions;
+  onOptionsChange: (options: ChatOptions) => void;
 }
 
 function contextLabel(m: ChatMessage): string | null {
@@ -45,12 +47,28 @@ export default function ChatPanel(props: ChatPanelProps) {
       send();
     }
   };
+  const changeOption = (key: 'model' | 'effort', value: string) => {
+    const next = { ...props.options };
+    if (value === 'default') delete next[key];
+    else next[key] = value as never;
+    props.onOptionsChange(next);
+  };
 
   return (
     <aside className="chat-panel" aria-label="Ask AI">
       <ResizeHandle spec={CHAT_RESIZE} ariaLabel="Resize Ask AI panel" />
       <div className="chat-header">
         <h2>Ask AI</h2>
+        <select aria-label="Model" className="chat-select" value={props.options.model ?? 'default'}
+          onChange={(e) => changeOption('model', e.target.value)}>
+          <option value="default">model: default</option>
+          {CHAT_MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
+        </select>
+        <select aria-label="Effort" className="chat-select" value={props.options.effort ?? 'default'}
+          onChange={(e) => changeOption('effort', e.target.value)}>
+          <option value="default">effort: default</option>
+          {CHAT_EFFORTS.map((e) => <option key={e} value={e}>{e}</option>)}
+        </select>
         <span className="comment-form-spacer" />
         <button onClick={props.onClear} disabled={props.messages.length === 0}>Clear</button>
         <button aria-label="Close Ask AI" onClick={props.onClose}>×</button>
@@ -66,6 +84,9 @@ export default function ChatPanel(props: ChatPanelProps) {
               <div key={m.id} className="chat-msg chat-user">
                 {label && (
                   <button className="chat-context" onClick={() => props.onJump(m.context!.file)}>{label}</button>
+                )}
+                {m.options && (m.options.model || m.options.effort) && (
+                  <span className="chat-options">{[m.options.model, m.options.effort].filter(Boolean).join(' · ')}</span>
                 )}
                 {m.context?.code !== undefined && <pre className="chat-quote">{m.context.code}</pre>}
                 <div className="chat-text">{m.content}</div>

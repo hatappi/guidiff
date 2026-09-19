@@ -1,4 +1,4 @@
-import type { ChatContext, ChatMessage, ReviewComment, ReviewPayload, StoredComment, Verdict } from '@guidiff/schema';
+import type { ChatContext, ChatMessage, ChatOptions, ReviewComment, ReviewPayload, StoredComment, Verdict } from '@guidiff/schema';
 import { parseSse } from './sse.ts';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -35,8 +35,8 @@ export const fetchChat = () => request<{ messages: ChatMessage[] }>('/api/chat')
 export const abortChat = () => request('/api/chat/abort', { method: 'POST' });
 export const clearChat = () => request('/api/chat/clear', { method: 'POST' });
 
-export async function* sendChatMessage(content: string, context?: ChatContext): AsyncGenerator<ChatStreamEvent> {
-  const res = await fetch('/api/chat/messages', jsonInit('POST', { content, context }));
+export async function* sendChatMessage(content: string, context?: ChatContext, options?: ChatOptions): AsyncGenerator<ChatStreamEvent> {
+  const res = await fetch('/api/chat/messages', jsonInit('POST', { content, context, ...options }));
   if (!res.ok || !res.body) throw new Error(`/api/chat/messages failed: ${res.status}`);
   for await (const frame of parseSse(res.body)) {
     if (frame.event === 'delta') yield { type: 'delta', text: (JSON.parse(frame.data) as { text: string }).text };

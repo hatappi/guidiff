@@ -1,6 +1,6 @@
-import { describe, expect, test, mock } from 'bun:test';
+import { beforeEach, describe, expect, test, mock } from 'bun:test';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import type { ChatContext, ChatMessage, ReviewPayload } from '@guidiff/schema';
+import type { ChatContext, ChatMessage, ChatOptions, ReviewPayload } from '@guidiff/schema';
 import App from './App.tsx';
 
 const payload: ReviewPayload = {
@@ -29,6 +29,7 @@ let chatToServe: ChatMessage[] = [];
 // reproduce a stale re-fetch racing a newer chat turn.
 let stallNextFetch = false;
 let releaseStalledFetch: (() => void) | null = null;
+let lastOptions: ChatOptions | undefined;
 mock.module('./api.ts', () => ({
   fetchReview: async () => payloadToServe,
   createComment: async () => ({ id: 1 }),
@@ -52,9 +53,14 @@ mock.module('./api.ts', () => ({
   },
   // Stateful like the real server: App re-fetches the transcript after every
   // turn, so the mock must remember what was sent.
-  sendChatMessage: async function* (content: string, context?: ChatContext) {
+  sendChatMessage: async function* (content: string, context?: ChatContext, options?: ChatOptions) {
+    lastOptions = options;
     const id = chatToServe.length + 1;
-    const user: ChatMessage = { id, role: 'user', content, status: 'done', ...(context ? { context } : {}) };
+    const user: ChatMessage = {
+      id, role: 'user', content, status: 'done',
+      ...(context ? { context } : {}),
+      ...(options && (options.model || options.effort) ? { options } : {}),
+    };
     const assistant: ChatMessage = { id: id + 1, role: 'assistant', content: 'pong', status: 'done' };
     chatToServe = [...chatToServe, user, assistant];
     yield { type: 'delta', text: 'po' };
@@ -89,6 +95,8 @@ const guidedPayload: ReviewPayload = {
 const aiPayload: ReviewPayload = { ...payload, ai: { enabled: true } };
 
 describe('App', () => {
+  beforeEach(() => { localStorage.clear(); lastOptions = undefined; });
+
   test('loads review payload and shows target and files', async () => {
     payloadToServe = payload;
     render(<App />);
@@ -490,5 +498,31 @@ describe('App', () => {
     releaseStalledFetch!();
     await new Promise((r) => setTimeout(r, 0));
     expect(screen.getByText('second')).toBeTruthy();
+  });
+
+  test('the selected model and effort travel with each question and persist', async () => {
+    payloadToServe = aiPayload;
+    chatToServe = [];
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Ask AI')).toBeTruthy());
+    fireEvent.click(screen.getByText('Ask AI'));
+    fireEvent.change(screen.getByLabelText('Model'), { target: { value: 'sonnet' } });
+    fireEvent.change(screen.getByLabelText('Effort'), { target: { value: 'low' } });
+    fireEvent.change(screen.getByPlaceholderText('Ask about this diff…'), { target: { value: 'why?' } });
+    fireEvent.click(screen.getByText('Send'));
+    await waitFor(() => expect(screen.getByText('pong')).toBeTruthy());
+    expect(lastOptions).toEqual({ model: 'sonnet', effort: 'low' });
+    expect(localStorage.getItem('guidiff.chat.model')).toBe('sonnet');
+    expect(localStorage.getItem('guidiff.chat.effort')).toBe('low');
+  });
+
+  test('a stored selection is restored on load', async () => {
+    localStorage.setItem('guidiff.chat.model', 'fable');
+    payloadToServe = aiPayload;
+    chatToServe = [];
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('Ask AI')).toBeTruthy());
+    fireEvent.click(screen.getByText('Ask AI'));
+    expect((screen.getByLabelText('Model') as HTMLSelectElement).value).toBe('fable');
   });
 });
