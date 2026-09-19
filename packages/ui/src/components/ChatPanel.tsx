@@ -61,12 +61,12 @@ export default function ChatPanel(props: ChatPanelProps) {
         <h2>Ask AI</h2>
         <select aria-label="Model" className="chat-select" value={props.options.model ?? 'default'}
           onChange={(e) => changeOption('model', e.target.value)}>
-          <option value="default">model: default</option>
+          <option value="default">default</option>
           {CHAT_MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
         <select aria-label="Effort" className="chat-select" value={props.options.effort ?? 'default'}
           onChange={(e) => changeOption('effort', e.target.value)}>
-          <option value="default">effort: default</option>
+          <option value="default">default</option>
           {CHAT_EFFORTS.map((e) => <option key={e} value={e}>{e}</option>)}
         </select>
         <span className="comment-form-spacer" />
@@ -80,13 +80,18 @@ export default function ChatPanel(props: ChatPanelProps) {
         {props.messages.map((m, i) => {
           if (m.role === 'user') {
             const label = contextLabel(m);
+            const hasOptions = Boolean(m.options && (m.options.model || m.options.effort));
             return (
               <div key={m.id} className="chat-msg chat-user">
-                {label && (
-                  <button className="chat-context" onClick={() => props.onJump(m.context!.file)}>{label}</button>
-                )}
-                {m.options && (m.options.model || m.options.effort) && (
-                  <span className="chat-options">{[m.options.model, m.options.effort].filter(Boolean).join(' · ')}</span>
+                {(label || hasOptions) && (
+                  <div className="chat-meta">
+                    {label && (
+                      <button className="chat-context" onClick={() => props.onJump(m.context!.file)}>{label}</button>
+                    )}
+                    {hasOptions && (
+                      <span className="chat-options">{[m.options!.model, m.options!.effort].filter(Boolean).join(' · ')}</span>
+                    )}
+                  </div>
                 )}
                 {m.context?.code !== undefined && <pre className="chat-quote">{m.context.code}</pre>}
                 <div className="chat-text">{m.content}</div>
