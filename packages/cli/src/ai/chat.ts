@@ -85,30 +85,16 @@ export class ChatSession {
   }
 
   async *#run(assistant: ChatMessage, prompt: string, controller: AbortController): AsyncGenerator<ChatEvent> {
-    const iterator = this.opts.provider.ask({
-      prompt,
-      systemPrompt: this.opts.systemPrompt,
-      ...(this.#providerSessionId ? { sessionId: this.#providerSessionId } : {}),
-      cwd: this.opts.cwd,
-      ...(this.opts.addDirs ? { addDirs: this.opts.addDirs } : {}),
-      signal: controller.signal,
-    })[Symbol.asyncIterator]();
-
-    // We race every pull against the signal ourselves instead of trusting a
-    // plain `for await` to stop promptly: a provider only notices abort the
-    // next time it awaits something of its own, and an 'abort' listener it
-    // registers at that point can already be too late (the event does not
-    // replay for listeners added after abort() already fired).
-    const aborted = new Promise<{ aborted: true }>((resolve) => {
-      if (controller.signal.aborted) resolve({ aborted: true });
-      else controller.signal.addEventListener('abort', () => resolve({ aborted: true }), { once: true });
-    });
-
     try {
-      while (true) {
-        const outcome = await Promise.race([iterator.next(), aborted]);
-        if ('aborted' in outcome || outcome.done) break;
-        const ev = outcome.value;
+      const events = this.opts.provider.ask({
+        prompt,
+        systemPrompt: this.opts.systemPrompt,
+        ...(this.#providerSessionId ? { sessionId: this.#providerSessionId } : {}),
+        cwd: this.opts.cwd,
+        ...(this.opts.addDirs ? { addDirs: this.opts.addDirs } : {}),
+        signal: controller.signal,
+      });
+      for await (const ev of events) {
         if (ev.type === 'delta') assistant.content += ev.text;
         else if (ev.type === 'done') {
           assistant.status = 'done';
@@ -120,9 +106,6 @@ export class ChatSession {
         yield ev;
       }
     } finally {
-      // Let the provider unwind its own resources (e.g. a spawned process)
-      // once it next suspends; harmless if it already finished.
-      iterator.return?.()?.catch(() => {});
       // Reached on completion, abort, consumer return, or provider throw.
       if (assistant.status === 'streaming') {
         if (controller.signal.aborted) assistant.status = 'aborted';

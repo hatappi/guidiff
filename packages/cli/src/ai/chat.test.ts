@@ -63,6 +63,9 @@ function scripted(scripts: ChatEvent[][]) {
       const script = scripts.shift() ?? [];
       for (const ev of script) {
         if (ev.type === 'delta' && ev.text === '<wait>') {
+          // A conforming provider checks the signal before waiting on it: an
+          // 'abort' listener registered after abort() already fired never runs.
+          if (req.signal.aborted) return;
           await Promise.race([opened, new Promise<void>((r) => req.signal.addEventListener('abort', () => r(), { once: true }))]);
           if (req.signal.aborted) return;
           continue;
