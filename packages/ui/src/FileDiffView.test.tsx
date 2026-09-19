@@ -93,6 +93,24 @@ test('a draft for this file opens a prefilled comment form on its range', () => 
   expect(onAddComment).toHaveBeenCalledWith({ file: 'src/a.ts', side: 'new', startLine: 1, endLine: 1, body: 'AI said so' });
 });
 
+test('a new draft for the same range re-seeds the form', () => {
+  const { container, rerender } = render(
+    <FileDiffView file={file} comments={[]} viewMode="unified"
+      onToggleViewed={noop} onAddComment={noop} onUpdateComment={noop} onDeleteComment={noop}
+      draft={{ file: 'src/a.ts', side: 'new', startLine: 1, endLine: 1, body: 'first' }}
+      onDraftConsumed={noop} />,
+  );
+  const scope = within(container as HTMLElement);
+  expect((scope.getByPlaceholderText('Leave a comment') as HTMLTextAreaElement).value).toBe('first');
+  rerender(
+    <FileDiffView file={file} comments={[]} viewMode="unified"
+      onToggleViewed={noop} onAddComment={noop} onUpdateComment={noop} onDeleteComment={noop}
+      draft={{ file: 'src/a.ts', side: 'new', startLine: 1, endLine: 1, body: 'second' }}
+      onDraftConsumed={noop} />,
+  );
+  expect((scope.getByPlaceholderText('Leave a comment') as HTMLTextAreaElement).value).toBe('second');
+});
+
 test('a draft for another file is ignored', () => {
   const { container } = render(
     <FileDiffView file={file} comments={[]} viewMode="unified"

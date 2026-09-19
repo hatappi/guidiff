@@ -44,6 +44,9 @@ export default function FileDiffView(props: FileDiffViewProps) {
   const [dragging, setDragging] = useState(false);
   const [fileFormOpen, setFileFormOpen] = useState(false);
   const [draftBody, setDraftBody] = useState<string | null>(null);
+  // Bumped on every incoming draft, including one with an empty body, so the
+  // form key below always changes and the form remounts to pick it up.
+  const [draftKey, setDraftKey] = useState(0);
   const dragAnchor = useRef<LineKey | null>(null);
   const fileComments = props.comments.filter((c) => c.startLine === undefined);
 
@@ -70,6 +73,7 @@ export default function FileDiffView(props: FileDiffViewProps) {
     if (!d || d.file !== file.path) return;
     setSelection({ side: d.side, start: d.startLine, end: d.endLine });
     setDraftBody(d.body);
+    setDraftKey((k) => k + 1);
     setFormOpen(true);
     props.onDraftConsumed?.();
   }, [props.draft]);
@@ -243,7 +247,7 @@ export default function FileDiffView(props: FileDiffViewProps) {
                       {showForm && (
                         <tr className="inline-row"><td colSpan={3}>
                           <CommentForm
-                            key={draftBody ?? ''}
+                            key={draftKey}
                             initialBody={draftBody ?? undefined}
                             suggestionBase={selectionBase}
                             onSubmit={submitComment}
@@ -308,7 +312,7 @@ export default function FileDiffView(props: FileDiffViewProps) {
                       {showForm && (
                         <tr className="inline-row"><td colSpan={4}>
                           <CommentForm
-                            key={draftBody ?? ''}
+                            key={draftKey}
                             initialBody={draftBody ?? undefined}
                             suggestionBase={selectionBase}
                             onSubmit={submitComment}
