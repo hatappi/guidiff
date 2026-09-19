@@ -38,6 +38,7 @@ export default function CommentThread(props: {
         editingId === c.id ? (
           <CommentForm
             key={c.id}
+            mode="edit"
             initialBody={c.body}
             initialSuggestion={c.suggestion}
             suggestionBase={props.resolveOriginal?.(c) ?? null}
