@@ -10,3 +10,11 @@ md.enable(['emphasis', 'backticks', 'list', 'newline']);
 export function renderMarkdown(text: string): string {
   return md.render(text);
 }
+
+// Chat answers are full markdown (code fences, headings, links). html: false
+// keeps model output inert when injected via dangerouslySetInnerHTML.
+const chatMd = new MarkdownIt('commonmark', { html: false });
+
+export function renderChatMarkdown(text: string): string {
+  return chatMd.render(text);
+}

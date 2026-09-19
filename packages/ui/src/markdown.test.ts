@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { renderMarkdown } from './markdown.ts';
+import { renderChatMarkdown, renderMarkdown } from './markdown.ts';
 
 describe('renderMarkdown', () => {
   test('renders the supported subset', () => {
@@ -39,4 +39,12 @@ describe('renderMarkdown', () => {
 
     expect(renderMarkdown('> quote')).not.toContain('<blockquote>');
   });
+});
+
+test('chat markdown renders fences, headings and links but escapes raw html', () => {
+  const html = renderChatMarkdown('## Why\n\n```ts\nconst a = 1;\n```\n\n[docs](https://example.com) <b>x</b>');
+  expect(html).toContain('<h2>Why</h2>');
+  expect(html).toContain('<pre><code class="language-ts">const a = 1;\n</code></pre>');
+  expect(html).toContain('<a href="https://example.com">docs</a>');
+  expect(html).toContain('&lt;b&gt;x&lt;/b&gt;');
 });
