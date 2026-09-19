@@ -20,6 +20,7 @@ const payload: ReviewPayload = {
   ],
   comments: [],
   reviewedSections: [],
+  ai: { enabled: false },
 };
 
 let payloadToServe: ReviewPayload;
@@ -52,6 +53,7 @@ const guidedPayload: ReviewPayload = {
   ],
   comments: [],
   reviewedSections: [],
+  ai: { enabled: false },
 };
 
 describe('App', () => {
@@ -132,6 +134,7 @@ describe('App', () => {
     files: [mkFile('src/a.ts', viewed), mkFile('src/b.ts', viewed)],
     comments: [],
     reviewedSections,
+    ai: { enabled: false },
   });
 
   const sectionCheckbox = (container: HTMLElement) =>

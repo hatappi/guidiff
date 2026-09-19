@@ -123,6 +123,28 @@ export interface StoredComment extends ReviewComment {
   id: number;
 }
 
+// ---- Ask AI chat (cli -> ui; never part of the review result) ----
+
+export interface ChatContext {
+  file: string;
+  side?: 'new' | 'old';
+  startLine?: number;
+  endLine?: number;
+  // Text of the selected lines, shown in the panel and quoted to the model.
+  code?: string;
+}
+
+export interface ChatMessage {
+  id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  // User messages only: what the question was asked about.
+  context?: ChatContext;
+  status: 'streaming' | 'done' | 'aborted' | 'error';
+  // Set when status is 'error'.
+  error?: string;
+}
+
 export interface ReviewPayload {
   version: string;
   target: string;
@@ -130,4 +152,5 @@ export interface ReviewPayload {
   files: Array<FileDiff & { state: FileState }>;
   comments: StoredComment[];
   reviewedSections: string[];
+  ai: { enabled: boolean };
 }

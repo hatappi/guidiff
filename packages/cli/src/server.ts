@@ -67,6 +67,7 @@ export function startServer(opts: ServerOptions) {
             })),
             comments: store.comments(),
             reviewedSections: store.reviewedSections(),
+            ai: { enabled: false },
           };
           return json(payload);
         },
