@@ -163,6 +163,8 @@ button:disabled { cursor: default; opacity: 0.5; }
 .progress { font-size: 14px; color: var(--fg-muted); }
 .view-toggle { margin-left: auto; font-size: 14px; }
 .theme-toggle { font-size: 14px; padding: 2px 8px; }
+/* Visible pressed state for the Ask AI toggle, to back its aria-pressed. */
+.header button.selected { background: var(--btn-hover-bg); border-color: var(--accent); }
 .code .empty { background: var(--bg-subtle); }
 td.ln { cursor: pointer; }
 td.ln:hover { background: var(--attention-bg); }

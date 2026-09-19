@@ -414,8 +414,10 @@ describe('App', () => {
     expect(screen.queryByLabelText('Ask AI')).toBeNull();
     fireEvent.click(screen.getByText('Ask AI'));
     expect(screen.getByLabelText('Ask AI')).toBeTruthy();
+    expect(screen.getByText('Ask AI', { selector: 'button' }).getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(screen.getByLabelText('Close Ask AI'));
     expect(screen.queryByLabelText('Ask AI')).toBeNull();
+    expect(screen.getByText('Ask AI', { selector: 'button' }).getAttribute('aria-pressed')).toBe('false');
   });
 
   test('sending a question streams the answer into the panel', async () => {

@@ -260,7 +260,7 @@ export default function App() {
             {viewMode === 'unified' ? 'Split view' : 'Unified view'}
           </button>
           {aiEnabled && (
-            <button className={chatOpen ? 'selected' : undefined} onClick={() => setChatOpen((o) => !o)}>Ask AI</button>
+            <button className={chatOpen ? 'selected' : undefined} aria-pressed={chatOpen} onClick={() => setChatOpen((o) => !o)}>Ask AI</button>
           )}
           <button className="primary" onClick={() => setModalOpen(true)}>Submit</button>
           <button onClick={() => { api.cancelReview().finally(() => setFinished('cancel')); }}>Cancel</button>
