@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.2.17](https://github.com/hatappi/guidiff/compare/v0.2.16...v0.2.17) - 2026-09-21
+
+- fix(cli): keep guide section checkboxes across restarts by @hatappi in https://github.com/hatappi/guidiff/pull/58
+
 ## [v0.2.16](https://github.com/hatappi/guidiff/compare/v0.2.15...v0.2.16) - 2026-09-21
 
 - feat(ui): show the repository name in the header and tab title by @hatappi in https://github.com/hatappi/guidiff/pull/56
