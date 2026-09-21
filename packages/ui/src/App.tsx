@@ -110,9 +110,9 @@ export default function App() {
     document.getElementById(`file-${file}`)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   };
 
-  // Section reviewed and file viewed are kept in sync in both directions, but
-  // only on user interaction — persisted viewed state never checks a section
-  // by itself, so reviewedSections keeps meaning "reviewed in this session".
+  // Section reviewed and file viewed are kept in sync in both directions. On
+  // startup the CLI seeds reviewedSections from persisted viewed state using
+  // the same "all files viewed" rule, so both checkboxes survive a restart.
   const toggleSection = (id: string, reviewed: boolean) => {
     api.setSectionReviewed(id, reviewed).catch(() => {});
     if (reviewed && groups) {

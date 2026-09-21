@@ -169,3 +169,5 @@ export interface ReviewPayload {
   reviewedSections: string[];
   ai: { enabled: boolean };
 }
+
+export { buildSectionGroups, OTHER_SECTION_ID, type SectionGroup } from './sections.ts';
