@@ -24,6 +24,7 @@ export type ReviewOutcome = { type: 'submit'; result: ReviewResult } | { type: '
 export interface ServerOptions {
   port: number;
   target: string;
+  repo: string;
   guide: Guide | null;
   files: FileDiff[];
   fileStates: Map<string, FileState>;
@@ -99,6 +100,7 @@ export function startServer(opts: ServerOptions) {
           const payload: ReviewPayload = {
             version: VERSION,
             target: opts.target,
+            repo: opts.repo,
             guide: opts.guide,
             files: opts.files.map((f) => ({
               ...f,

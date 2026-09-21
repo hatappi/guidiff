@@ -23,6 +23,7 @@ function boot(gitDir: string) {
   const handle = startServer({
     port: 0,
     target: 'working tree',
+    repo: 'acme/widget',
     guide: null,
     files,
     fileStates: new Map([['src/a.ts', { viewed: false, changedSinceLastView: false }]]),
@@ -42,6 +43,7 @@ describe('review api', () => {
     const payload = await res.json();
     expect(payload.version).toBe(VERSION);
     expect(payload.target).toBe('working tree');
+    expect(payload.repo).toBe('acme/widget');
     expect(payload.files[0].path).toBe('src/a.ts');
     expect(payload.files[0].state.viewed).toBe(false);
     expect(payload.comments).toEqual([]);
@@ -292,6 +294,7 @@ function bootWithAi(gitDir: string, scripts: ChatEvent[][]) {
   const handle = startServer({
     port: 0,
     target: 'working tree',
+    repo: 'acme/widget',
     guide: null,
     files,
     fileStates: new Map([['src/a.ts', { viewed: false, changedSinceLastView: false }]]),

@@ -1,8 +1,8 @@
 import { beforeAll, afterAll, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { collectDiff, getGitDir, getRepoRoot, resolveDiffSpec } from './git.ts';
+import { basename, join } from 'node:path';
+import { collectDiff, getGitDir, getRepoName, getRepoRoot, resolveDiffSpec } from './git.ts';
 
 function run(cwd: string, cmd: string[]) {
   const p = Bun.spawnSync(cmd, { cwd, env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null' } });
@@ -53,5 +53,16 @@ describe('collectDiff', () => {
   test('getGitDir returns .git path', async () => {
     const gitDir = await getGitDir(repo);
     expect(gitDir.endsWith('.git')).toBe(true);
+  });
+
+  test('getRepoName falls back to the directory name without an origin remote', async () => {
+    const root = await getRepoRoot(repo);
+    expect(await getRepoName(root)).toBe(basename(root));
+  });
+
+  test('getRepoName reads org/repo from the origin remote', async () => {
+    run(repo, ['git', 'remote', 'add', 'origin', 'git@github.com:acme/widget.git']);
+    const root = await getRepoRoot(repo);
+    expect(await getRepoName(root)).toBe('acme/widget');
   });
 });
