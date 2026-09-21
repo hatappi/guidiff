@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.2.16](https://github.com/hatappi/guidiff/compare/v0.2.15...v0.2.16) - 2026-09-21
+
+- feat(ui): show the repository name in the header and tab title by @hatappi in https://github.com/hatappi/guidiff/pull/56
+
 ## [v0.2.15](https://github.com/hatappi/guidiff/compare/v0.2.14...v0.2.15) - 2026-09-19
 
 - feat: Ask AI chat panel backed by the local claude CLI by @hatappi in https://github.com/hatappi/guidiff/pull/54
