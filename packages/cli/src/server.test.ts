@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import type { FileDiff } from '@guidiff/schema';
+import type { FileDiff, FileState, Guide } from '@guidiff/schema';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -465,4 +465,80 @@ describe('chat api', () => {
       { event: 'done', data: { message: { id: 2, role: 'assistant', content: 'slow', status: 'done' } } },
     ]);
   }, 20_000);
+});
+
+describe('section reviewed seeding', () => {
+  const guide: Guide = {
+    version: 1,
+    title: 'Guide',
+    summary: 'summary',
+    sections: [
+      { id: 'core', title: 'Core', description: 'd', importance: 'core', anchors: [{ file: 'src/a.ts', side: 'new' }] },
+      { id: 'extra', title: 'Extra', description: 'd', importance: 'supporting', anchors: [{ file: 'src/b.ts', side: 'new' }] },
+    ],
+  };
+  const threeFiles: FileDiff[] = [
+    files[0]!,
+    { path: 'src/b.ts', status: 'added', binary: false, hunks: [], patch: 'diff --git a/src/b.ts ...' },
+    { path: 'src/c.ts', status: 'added', binary: false, hunks: [], patch: 'diff --git a/src/c.ts ...' },
+  ];
+
+  function bootWithGuide(fileStates: Map<string, FileState>) {
+    const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+    const handle = startServer({
+      port: 0, target: 'working tree', repo: 'acme/widget', guide, files: threeFiles, fileStates, gitDir,
+      state: { version: 1, files: {} },
+    });
+    stop = () => handle.server.stop(true);
+    return handle;
+  }
+
+  test('sections whose files were all viewed in a previous run start reviewed', async () => {
+    const { url, outcome } = bootWithGuide(new Map([
+      ['src/a.ts', { viewed: true, changedSinceLastView: false, lastViewedAt: '2026-01-01T00:00:00.000Z' }],
+      ['src/b.ts', { viewed: false, changedSinceLastView: true, lastViewedAt: '2026-01-01T00:00:00.000Z' }],
+      ['src/c.ts', { viewed: true, changedSinceLastView: false, lastViewedAt: '2026-01-01T00:00:00.000Z' }],
+    ]));
+    const payload = await (await fetch(`${url}/api/review`)).json();
+    expect(payload.reviewedSections.sort()).toEqual(['core', 'other-changes']);
+
+    await fetch(`${url}/api/submit`, { method: 'POST', body: JSON.stringify({ verdict: 'approve' }) });
+    const out = await outcome;
+    expect(out.type).toBe('submit');
+    if (out.type === 'submit') expect(out.result.reviewedSections.sort()).toEqual(['core', 'other-changes']);
+  });
+
+  test('nothing is seeded when no file is viewed', async () => {
+    const { url } = bootWithGuide(new Map());
+    const payload = await (await fetch(`${url}/api/review`)).json();
+    expect(payload.reviewedSections).toEqual([]);
+  });
+
+  test('a section whose files are all owned by an earlier section is never seeded', async () => {
+    const overlapping: Guide = {
+      ...guide,
+      sections: [
+        guide.sections[0]!,
+        { id: 'again', title: 'Again', description: 'd', importance: 'supporting', anchors: [{ file: 'src/a.ts', side: 'new' }] },
+      ],
+    };
+    const boot = (fileStates: Map<string, FileState>) => {
+      const gitDir = mkdtempSync(join(tmpdir(), 'guidiff-srv-'));
+      const handle = startServer({
+        port: 0, target: 'working tree', repo: 'acme/widget', guide: overlapping, files: [files[0]!], fileStates, gitDir,
+        state: { version: 1, files: {} },
+      });
+      return handle;
+    };
+
+    const empty = boot(new Map());
+    const none = await (await fetch(`${empty.url}/api/review`)).json();
+    empty.server.stop(true);
+    expect(none.reviewedSections).toEqual([]);
+
+    const viewed = boot(new Map([['src/a.ts', { viewed: true, changedSinceLastView: false }]]));
+    const seeded = await (await fetch(`${viewed.url}/api/review`)).json();
+    viewed.server.stop(true);
+    expect(seeded.reviewedSections).toEqual(['core']);
+  });
 });

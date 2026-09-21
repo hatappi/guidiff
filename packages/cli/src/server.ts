@@ -1,6 +1,7 @@
 import {
   CHAT_EFFORTS,
   CHAT_MODELS,
+  buildSectionGroups,
   ReviewCommentSchema,
   ReviewResultSchema,
   VerdictSchema,
@@ -61,6 +62,20 @@ const ChatSendSchema = z.object({
 export function startServer(opts: ServerOptions) {
   const store = new ReviewStore();
   let state = opts.state;
+
+  // Section reviewed state is not persisted on its own; it is derived from the
+  // persisted (and hash-reconciled) file viewed state, mirroring the UI rule
+  // that a section is reviewed once every file under it is viewed. This keeps
+  // the guide checkboxes consistent with the file checkboxes across runs.
+  // A group without files of its own (all anchors owned by an earlier
+  // section) has nothing to derive from and stays unchecked.
+  if (opts.guide) {
+    for (const group of buildSectionGroups(opts.guide, opts.files)) {
+      if (group.files.length > 0 && group.files.every((f) => opts.fileStates.get(f.path)?.viewed)) {
+        store.setSectionReviewed(group.section.id, true);
+      }
+    }
+  }
   let resolveOutcome!: (o: ReviewOutcome) => void;
   const outcome = new Promise<ReviewOutcome>((resolve) => (resolveOutcome = resolve));
 
