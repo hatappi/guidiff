@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { ClaudeCliProvider } from './ai/claude-cli.ts';
 import { HelpRequested, parseCliArgs, USAGE, VersionRequested } from './cli-args.ts';
 import { VERSION } from './version.ts';
-import { collectDiff, type DiffSpec, getGitDir, getRepoRoot, resolveDiffSpec } from './git.ts';
+import { collectDiff, type DiffSpec, getGitDir, getRepoName, getRepoRoot, resolveDiffSpec } from './git.ts';
 import { startServer } from './server.ts';
 import { loadState, reconcileFiles } from './state.ts';
 
@@ -97,9 +97,11 @@ async function main(): Promise<number> {
   }
 
   const target = spec.kind === 'worktree' ? 'working tree' : spec.label;
+  const repo = spec.kind === 'pr' ? spec.repo : await getRepoName(repoRoot);
   const { server, url, outcome, dispose } = startServer({
     port: opts.port,
     target,
+    repo,
     guide,
     files,
     fileStates,

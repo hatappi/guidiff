@@ -6,6 +6,7 @@ import App from './App.tsx';
 const payload: ReviewPayload = {
   version: '1.2.3-test',
   target: 'working tree',
+  repo: 'acme/widget',
   guide: null,
   files: [
     {
@@ -74,6 +75,7 @@ mock.module('./api.ts', () => ({
 const guidedPayload: ReviewPayload = {
   version: '1.2.3-test',
   target: 'working tree',
+  repo: 'acme/widget',
   guide: {
     version: 1, title: 'G', summary: 'Sum.',
     sections: [
@@ -109,6 +111,13 @@ describe('App', () => {
     payloadToServe = payload;
     render(<App />);
     await waitFor(() => expect(screen.getByText('v1.2.3-test')).toBeTruthy());
+  });
+
+  test('header and tab title show the repository name', async () => {
+    payloadToServe = payload;
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('acme/widget')).toBeTruthy());
+    expect(document.title).toBe('acme/widget · guidiff');
   });
 
   test('with a guide, each section renders as a row pairing its guide block with its diffs', async () => {
@@ -164,6 +173,7 @@ describe('App', () => {
   const syncPayload = (viewed: boolean, reviewedSections: string[]): ReviewPayload => ({
     version: '1.2.3-test',
     target: 'working tree',
+    repo: 'acme/widget',
     guide: {
       version: 1, title: 'G', summary: 'Sum.',
       sections: [

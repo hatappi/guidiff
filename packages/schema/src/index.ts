@@ -161,6 +161,8 @@ export interface ChatMessage {
 export interface ReviewPayload {
   version: string;
   target: string;
+  // org/repo from the origin remote (or PR URL), else the checkout's directory name.
+  repo: string;
   guide: Guide | null;
   files: Array<FileDiff & { state: FileState }>;
   comments: StoredComment[];

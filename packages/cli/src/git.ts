@@ -1,16 +1,26 @@
+import { basename } from 'node:path';
 import type { FileDiff, Hunk } from '@guidiff/schema';
 
 export type DiffSpec =
   | { kind: 'worktree' }
   | { kind: 'range'; args: string[]; label: string }
-  | { kind: 'pr'; url: string; label: string };
+  | { kind: 'pr'; url: string; label: string; repo: string };
 
 const PR_URL_RE = /^https?:\/\/(?:www\.)?github\.com\/([^/\s]+)\/([^/\s]+)\/pull\/(\d+)(?:\/.*)?$/;
 
-function parsePrUrl(arg: string): { url: string; label: string } | null {
+function parsePrUrl(arg: string): { url: string; label: string; repo: string } | null {
   const m = arg.match(PR_URL_RE);
   if (!m) return null;
-  return { url: arg, label: `${m[1]}/${m[2]}#${m[3]}` };
+  return { url: arg, label: `${m[1]}/${m[2]}#${m[3]}`, repo: `${m[1]}/${m[2]}` };
+}
+
+// Takes the last two path segments, which covers both scp-style
+// (git@host:org/repo.git) and URL-style (https://host/org/repo) remotes.
+const REMOTE_REPO_RE = /[/:]([^/:\s]+)\/([^/:\s]+?)(?:\.git)?\/?$/;
+
+export function parseRepoName(remoteUrl: string): string | null {
+  const m = remoteUrl.trim().match(REMOTE_REPO_RE);
+  return m ? `${m[1]}/${m[2]}` : null;
 }
 
 export function resolveDiffSpec(positionals: string[]): DiffSpec {
@@ -109,6 +119,16 @@ async function git(repoRoot: string, args: string[], allowExit1 = false): Promis
 
 export async function getRepoRoot(cwd: string): Promise<string> {
   return (await git(cwd, ['rev-parse', '--show-toplevel'])).trim();
+}
+
+export async function getRepoName(repoRoot: string): Promise<string> {
+  try {
+    const name = parseRepoName(await git(repoRoot, ['remote', 'get-url', 'origin']));
+    if (name) return name;
+  } catch {
+    // No origin remote: fall through to the directory name.
+  }
+  return basename(repoRoot);
 }
 
 export async function getGitDir(cwd: string): Promise<string> {

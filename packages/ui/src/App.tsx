@@ -43,6 +43,11 @@ export default function App() {
     api.fetchChat().then((r) => setChat(r.messages)).catch(() => {});
   }, [aiEnabled]);
 
+  const repo = payload?.repo;
+  useEffect(() => {
+    if (repo) document.title = `${repo} · guidiff`;
+  }, [repo]);
+
   const groups = useMemo(
     () => (payload?.guide ? buildSectionGroups(payload.guide, payload.files) : null),
     [payload?.guide, payload?.files],
@@ -254,6 +259,7 @@ export default function App() {
         <header className="header">
           <h1>guidiff</h1>
           <span className="version">v{payload.version}</span>
+          <span className="repo">{payload.repo}</span>
           <span className="target">{payload.target}</span>
           <span className="progress">
             {payload.guide && groups

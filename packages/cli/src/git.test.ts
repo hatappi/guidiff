@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { parseUnifiedDiff, resolveDiffSpec } from './git.ts';
+import { parseRepoName, parseUnifiedDiff, resolveDiffSpec } from './git.ts';
 
 const SAMPLE = `diff --git a/src/app.ts b/src/app.ts
 index 1111111..2222222 100644
@@ -118,6 +118,7 @@ describe('resolveDiffSpec', () => {
       kind: 'pr',
       url: 'https://github.com/hatappi/guidiff/pull/41',
       label: 'hatappi/guidiff#41',
+      repo: 'hatappi/guidiff',
     });
   });
 
@@ -150,5 +151,20 @@ describe('resolveDiffSpec', () => {
 
   test('a non-PR github URL is left to git', () => {
     expect(resolveDiffSpec(['https://github.com/o/r/issues/7'])).toMatchObject({ kind: 'range' });
+  });
+});
+
+describe('parseRepoName', () => {
+  test('extracts org/repo from SSH and HTTPS remotes', () => {
+    expect(parseRepoName('git@github.com:hatappi/guidiff.git')).toBe('hatappi/guidiff');
+    expect(parseRepoName('https://github.com/hatappi/guidiff.git')).toBe('hatappi/guidiff');
+    expect(parseRepoName('https://github.com/hatappi/guidiff')).toBe('hatappi/guidiff');
+    expect(parseRepoName('https://github.com/hatappi/guidiff/')).toBe('hatappi/guidiff');
+    expect(parseRepoName('ssh://git@gitlab.example.com:2222/team/app.git')).toBe('team/app');
+  });
+
+  test('returns null when there is no org/repo pair', () => {
+    expect(parseRepoName('')).toBeNull();
+    expect(parseRepoName('repo.git')).toBeNull();
   });
 });
