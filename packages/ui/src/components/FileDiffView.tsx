@@ -7,6 +7,7 @@ import type { CommentDraft } from '../draft.ts';
 import { CodeCell } from './DiffLines.tsx';
 import CommentForm from './CommentForm.tsx';
 import CommentThread from './CommentThread.tsx';
+import CopyPathButton from './CopyPathButton.tsx';
 
 type FileWithState = ReviewPayload['files'][number];
 
@@ -174,7 +175,10 @@ export default function FileDiffView(props: FileDiffViewProps) {
       data-dragging={dragging || undefined}>
       <div className="file-header">
         <span className={`status status-${file.status}`}>{STATUS_LABEL[file.status]}</span>
-        <h2>{file.oldPath ? `${file.oldPath} → ${file.path}` : file.path}</h2>
+        <div className="file-title">
+          <h2>{file.oldPath ? `${file.oldPath} → ${file.path}` : file.path}</h2>
+          <CopyPathButton path={file.path} />
+        </div>
         {file.state.changedSinceLastView && (
           <span className="badge-changed" title={`Last viewed ${file.state.lastViewedAt ?? ''}`}>
             Changed since last view

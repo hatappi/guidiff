@@ -119,3 +119,17 @@ test('a draft for another file is ignored', () => {
   );
   expect(within(container as HTMLElement).queryByPlaceholderText('Leave a comment')).toBeNull();
 });
+
+test('copy button writes the new file path to the clipboard and shows a copied state', async () => {
+  const writeText = mock((_: string) => Promise.resolve());
+  Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+  const renamed = { ...file, status: 'renamed' as const, oldPath: 'src/old.ts' };
+  const { container } = render(
+    <FileDiffView file={renamed} comments={[]} viewMode="unified"
+      onToggleViewed={noop} onAddComment={noop} onUpdateComment={noop} onDeleteComment={noop} />,
+  );
+  const scope = within(container as HTMLElement);
+  fireEvent.click(scope.getByRole('button', { name: 'Copy file path' }));
+  expect(writeText).toHaveBeenCalledWith('src/a.ts');
+  expect(await scope.findByRole('button', { name: 'Copied!' })).toBeTruthy();
+});
