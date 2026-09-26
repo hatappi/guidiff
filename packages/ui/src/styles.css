@@ -137,7 +137,15 @@ button:disabled { cursor: default; opacity: 0.5; }
      never open a see-through gap above the sticky file header. */
   position: sticky; top: calc(var(--header-h) - 1px); z-index: 5;
 }
-.file-header h2 { font-size: 14px; font-family: monospace; margin: 0; flex: 1; }
+.file-title { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; }
+.file-header h2 { font-size: 14px; font-family: monospace; margin: 0; overflow-wrap: anywhere; }
+.copy-path-btn {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  padding: 4px; border: none; border-radius: 6px; background: transparent;
+  color: var(--fg-muted); cursor: pointer;
+}
+.copy-path-btn:hover { background: var(--btn-hover-bg); color: var(--fg); }
+.copy-path-btn[data-copied] { color: var(--success); }
 .status { font-size: 12px; padding: 1px 6px; border-radius: 10px; border: 1px solid var(--border); color: var(--fg-muted); }
 .status-added { color: var(--success); border-color: var(--success); }
 .status-deleted { color: var(--danger); border-color: var(--danger); }
