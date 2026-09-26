@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.2.18](https://github.com/hatappi/guidiff/compare/v0.2.17...v0.2.18) - 2026-09-26
+
+- feat(ui): add a GitHub-style copy file path button by @hatappi in https://github.com/hatappi/guidiff/pull/60
+
 ## [v0.2.17](https://github.com/hatappi/guidiff/compare/v0.2.16...v0.2.17) - 2026-09-21
 
 - fix(cli): keep guide section checkboxes across restarts by @hatappi in https://github.com/hatappi/guidiff/pull/58
